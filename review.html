@@ -100,6 +100,24 @@
         </header>
 
         <div style="padding: 20px;">
+            <!-- AI API 키 설정 -->
+            <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e0e0e0;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333; font-size: 13px;">
+                    Claude API 키 (오탈자 점검 기능 사용용)
+                </label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="password" id="claudeApiKeyInput" placeholder="sk-ant-..." style="flex: 1; padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 13px;" value="">
+                    <button id="saveApiKeyBtn" class="btn btn-secondary" style="padding: 8px 16px; font-size: 13px;">저장</button>
+                    <button id="clearApiKeyBtn" class="btn btn-secondary" style="padding: 8px 16px; font-size: 13px;">삭제</button>
+                </div>
+                <div id="apiKeyStatus" style="font-size: 12px; margin-top: 8px; padding: 8px; background: #fff; border-radius: 4px; border: 1px solid #e0e0e0;">
+                    ⚠️ API 키 상태 확인 중...
+                </div>
+                <small style="color: #999; font-size: 11px; display: block; margin-top: 5px;">
+                    API 키가 없으면 오탈자 점검 기능을 사용할 수 없습니다. Anthropic Console(https://console.anthropic.com)에서 API 키를 발급받으세요.
+                </small>
+            </div>
+
             <!-- 파일 업로드 섹션 -->
             <div class="file-upload-section">
                 <h2 style="margin-top: 0; margin-bottom: 20px; font-size: 1.5em; color: #333;">오탈자 검사</h2>

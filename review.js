@@ -40,6 +40,62 @@ class ReviewExtractor {
                 await this.checkSpelling();
             });
         }
+
+        // API 키 관리
+        this.setupApiKeyListeners();
+    }
+
+    setupApiKeyListeners() {
+        const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
+        const clearApiKeyBtn = document.getElementById('clearApiKeyBtn');
+        const apiKeyInput = document.getElementById('claudeApiKeyInput');
+        
+        // API 키 상태 표시 업데이트 함수
+        const updateApiKeyStatus = () => {
+            const apiKey = localStorage.getItem('claude_api_key');
+            const statusText = document.getElementById('apiKeyStatus');
+            if (statusText) {
+                if (apiKey && apiKey.trim()) {
+                    statusText.textContent = '✅ API 키가 저장되어 있습니다. 오탈자 점검 기능을 사용할 수 있습니다.';
+                    statusText.style.color = '#27ae60';
+                } else {
+                    statusText.textContent = '⚠️ API 키가 없습니다. 오탈자 점검 기능을 사용할 수 없습니다.';
+                    statusText.style.color = '#f39c12';
+                }
+            }
+        };
+        
+        if (saveApiKeyBtn && apiKeyInput) {
+            saveApiKeyBtn.addEventListener('click', () => {
+                const apiKey = apiKeyInput.value.trim();
+                if (apiKey) {
+                    localStorage.setItem('claude_api_key', apiKey);
+                    updateApiKeyStatus();
+                    alert('✅ API 키가 저장되었습니다. 이제 오탈자 점검 기능을 사용할 수 있습니다.');
+                } else {
+                    alert('API 키를 입력해주세요.');
+                }
+            });
+        }
+        
+        if (clearApiKeyBtn) {
+            clearApiKeyBtn.addEventListener('click', () => {
+                localStorage.removeItem('claude_api_key');
+                if (apiKeyInput) apiKeyInput.value = '';
+                updateApiKeyStatus();
+                alert('API 키가 삭제되었습니다.');
+            });
+        }
+        
+        // 저장된 API 키 로드
+        if (apiKeyInput) {
+            const savedKey = localStorage.getItem('claude_api_key');
+            if (savedKey) {
+                apiKeyInput.value = savedKey;
+            }
+            // 초기 상태 표시
+            updateApiKeyStatus();
+        }
     }
 
     handleFileSelect(e) {
