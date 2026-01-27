@@ -1077,82 +1077,21 @@ class DiscussionManager {
 • 일본어: [한 문장으로 된 사전적 정의]`;
             }
 
-            // CORS 프록시를 통해 API 호출
-            // 로컬 서버가 있으면 사용, 없으면 공개 프록시 사용
-            const proxyUrl = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
-                ? '/api/claude'  // 로컬 서버 사용
-                : 'https://cors-anywhere.herokuapp.com/https://api.anthropic.com/v1/messages';  // 공개 프록시 (임시)
+            // Netlify Functions 또는 로컬 서버를 통해 API 호출
+            const apiUrl = '/api/claude';
             
-            // 로컬 서버 사용 시
-            if (proxyUrl === '/api/claude') {
-                console.log('[DEBUG] 로컬 서버를 통해 API 호출 시도');
-                console.log('[DEBUG] 현재 URL:', window.location.href);
-                console.log('[DEBUG] API 키 존재:', !!apiKey);
-                console.log('[DEBUG] 요청 URL:', window.location.origin + '/api/claude');
-                console.log('[DEBUG] fetch 호출 시작...');
-                
-                const response = await fetch('/api/claude', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        apiKey: apiKey.trim(),
-                        model: 'claude-sonnet-4-5-20250929',
-                        max_tokens: 200,
-                        temperature: 0.3,
-                        system: 'You are a helpful assistant that explains the meaning of Korean-Japanese translation terms concisely.',
-                        messages: [
-                            {
-                                role: 'user',
-                                content: prompt
-                            }
-                        ]
-                    })
-                });
-                
-                console.log('[DEBUG] fetch 호출 완료');
-                console.log('[DEBUG] 응답 상태:', response.status, response.statusText);
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('[DEBUG] 응답 오류:', errorText);
-                    // 로컬 서버가 없으면 직접 호출 시도 (CORS 오류 발생하지만 사용자에게 안내)
-                    throw new Error('로컬 서버가 실행되지 않았습니다. Python 서버를 실행해주세요: python server.py');
-                }
-                
-                const data = await response.json();
-                console.log('[DEBUG] 응답 데이터 받음');
-                
-                if (!data.content || !data.content[0] || !data.content[0].text) {
-                    throw new Error('API 응답 형식이 올바르지 않습니다.');
-                }
-                
-                let meaning = data.content[0].text.trim();
-                
-                if (!meaning) {
-                    throw new Error('의미를 생성할 수 없습니다.');
-                }
-                
-                // 한국어와 일본어 의미를 파싱하여 엔터로 구분
-                meaning = this.parseMeaning(meaning);
-                
-                // 데이터 업데이트
-                post.meaning = meaning;
-                this.saveData();
-                this.renderPosts();
-                return;
-            }
+            console.log('[DEBUG] API 호출 시도');
+            console.log('[DEBUG] 현재 URL:', window.location.href);
+            console.log('[DEBUG] API 키 존재:', !!apiKey);
+            console.log('[DEBUG] 요청 URL:', window.location.origin + apiUrl);
             
-            // 직접 API 호출 (CORS 오류 발생 가능)
-            const response = await fetch('https://api.anthropic.com/v1/messages', {
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': apiKey.trim(),
-                    'anthropic-version': '2023-06-01'
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
+                    apiKey: apiKey.trim(),
                     model: 'claude-sonnet-4-5-20250929',
                     max_tokens: 200,
                     temperature: 0.3,
@@ -1165,41 +1104,27 @@ class DiscussionManager {
                     ]
                 })
             });
-
+            
+            console.log('[DEBUG] fetch 호출 완료');
+            console.log('[DEBUG] 응답 상태:', response.status, response.statusText);
+            
             if (!response.ok) {
-                let errorData = {};
-                try {
-                    const responseText = await response.text();
-                    console.error('API 오류 응답:', responseText);
-                    errorData = JSON.parse(responseText);
-                } catch (e) {
-                    console.error('응답 파싱 실패:', e);
-                }
-                
+                const errorText = await response.text();
+                console.error('[DEBUG] 응답 오류:', errorText);
                 let errorMessage = `API 오류: ${response.status}`;
-                
-                if (response.status === 401) {
-                    errorMessage = 'API 키가 유효하지 않습니다. API 키를 확인해주세요.';
-                } else if (response.status === 429) {
-                    errorMessage = 'API 호출 한도를 초과했습니다. 잠시 후 다시 시도해주세요.';
-                } else if (errorData.error) {
-                    if (errorData.error.message) {
-                        errorMessage = errorData.error.message;
-                    } else if (errorData.error.type) {
-                        errorMessage = `오류 타입: ${errorData.error.type}`;
+                try {
+                    const errorData = JSON.parse(errorText);
+                    if (errorData.error) {
+                        errorMessage = errorData.error.message || errorData.error;
                     }
+                } catch (e) {
+                    // JSON 파싱 실패 시 원본 텍스트 사용
                 }
-                
-                console.error('API 오류 상세:', {
-                    status: response.status,
-                    statusText: response.statusText,
-                    errorData: errorData
-                });
-                
                 throw new Error(errorMessage);
             }
-
+            
             const data = await response.json();
+            console.log('[DEBUG] 응답 데이터 받음');
             
             if (!data.content || !data.content[0] || !data.content[0].text) {
                 throw new Error('API 응답 형식이 올바르지 않습니다.');
