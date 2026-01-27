@@ -66,6 +66,7 @@ class PPTExtractor {
         }
         
         // API 키 관리
+        const apiKeySection = document.getElementById('apiKeySection');
         const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
         const clearApiKeyBtn = document.getElementById('clearApiKeyBtn');
         const apiKeyInput = document.getElementById('claudeApiKeyInput');
@@ -74,6 +75,18 @@ class PPTExtractor {
         const updateApiKeyStatus = () => {
             const apiKey = localStorage.getItem('claude_api_key');
             const statusText = document.getElementById('apiKeyStatus');
+            
+            // API 키가 있으면 섹션 숨기기, 없으면 표시
+            if (apiKeySection) {
+                if (apiKey && apiKey.trim()) {
+                    apiKeySection.style.display = 'none';
+                    apiKeySection.classList.remove('show');
+                } else {
+                    apiKeySection.style.display = 'block';
+                    apiKeySection.classList.add('show');
+                }
+            }
+            
             if (statusText) {
                 if (apiKey && apiKey.trim()) {
                     statusText.textContent = '✅ API 키가 저장되어 있습니다. AI 기능을 사용할 수 있습니다.';
@@ -106,6 +119,23 @@ class PPTExtractor {
                 alert('API 키가 삭제되었습니다.');
             });
         }
+        
+        // API 키 섹션 토글 버튼 추가 (필요시 표시)
+        const toggleApiKeySection = () => {
+            if (apiKeySection) {
+                const currentDisplay = apiKeySection.style.display;
+                if (currentDisplay === 'none' || !apiKeySection.classList.contains('show')) {
+                    apiKeySection.style.display = 'block';
+                    apiKeySection.classList.add('show');
+                } else {
+                    const apiKey = localStorage.getItem('claude_api_key');
+                    if (apiKey && apiKey.trim()) {
+                        apiKeySection.style.display = 'none';
+                        apiKeySection.classList.remove('show');
+                    }
+                }
+            }
+        };
         
         // 저장된 API 키 로드
         if (apiKeyInput) {
@@ -1589,7 +1619,8 @@ class PPTExtractor {
 숫자만 응답해주세요 (예: 0.85)`;
 
             // 프록시 서버를 통해 API 호출 (CORS 우회)
-            const response = await fetch('/api/claude', {
+            const apiUrl = window.getClaudeApiUrl ? window.getClaudeApiUrl() : '/api/claude';
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1758,7 +1789,8 @@ ${japaneseTextBlock}
 
         try {
             // 프록시 서버를 통해 API 호출 (CORS 우회)
-            const response = await fetch('/api/claude', {
+            const apiUrl = window.getClaudeApiUrl ? window.getClaudeApiUrl() : '/api/claude';
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

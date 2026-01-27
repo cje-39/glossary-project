@@ -53,7 +53,18 @@ class ReviewExtractor {
         // API 키 상태 표시 업데이트 함수
         const updateApiKeyStatus = () => {
             const apiKey = localStorage.getItem('claude_api_key');
+            const apiKeySection = document.getElementById('apiKeySection');
             const statusText = document.getElementById('apiKeyStatus');
+            
+            // API 키가 있으면 섹션 숨기기, 없으면 표시
+            if (apiKeySection) {
+                if (apiKey && apiKey.trim()) {
+                    apiKeySection.style.display = 'none';
+                } else {
+                    apiKeySection.style.display = 'block';
+                }
+            }
+            
             if (statusText) {
                 if (apiKey && apiKey.trim()) {
                     statusText.textContent = '✅ API 키가 저장되어 있습니다. 오탈자 점검 기능을 사용할 수 있습니다.';
@@ -601,7 +612,7 @@ ${textToCheck}
 문제가 없으면 "문제가 발견되지 않았습니다."라고 답변해주세요.`;
 
             // 현재 호스트와 포트를 사용하여 API 호출
-            const apiUrl = window.location.origin + '/api/claude';
+            const apiUrl = window.getClaudeApiUrl ? window.getClaudeApiUrl() : (window.location.origin + '/api/claude');
             
             const response = await fetch(apiUrl, {
                 method: 'POST',

@@ -29,6 +29,36 @@ class CorpusManager {
 
     // 데이터 로드
     async loadData() {
+        try {
+            // Firestore에서 먼저 시도
+            if (window.FirestoreHelper) {
+                const data = await FirestoreHelper.load('corpus', 'data');
+                if (data && data.items) {
+                    this.data = data.items;
+                    // LocalStorage에도 백업 저장
+                    localStorage.setItem('corpusData', JSON.stringify(this.data));
+                    this.filteredData = [...this.data];
+                    
+                    // 실시간 동기화 설정
+                    FirestoreHelper.onSnapshot('corpus', 'data', (data) => {
+                        if (data && data.items) {
+                            this.data = data.items;
+                            localStorage.setItem('corpusData', JSON.stringify(this.data));
+                            this.filteredData = [...this.data];
+                            this.renderFileList();
+                            if (this.selectedFileGroup) {
+                                this.renderCorpusList();
+                            }
+                        }
+                    });
+                    return;
+                }
+            }
+        } catch (error) {
+            console.log('Firestore에서 코퍼스 데이터 로드 실패, LocalStorage 사용:', error);
+        }
+
+        // LocalStorage에서 로드
         const savedData = localStorage.getItem('corpusData');
         if (savedData) {
             this.data = JSON.parse(savedData);
@@ -40,6 +70,35 @@ class CorpusManager {
 
     // 파일 그룹 로드
     async loadFileGroups() {
+        try {
+            // Firestore에서 먼저 시도
+            if (window.FirestoreHelper) {
+                const data = await FirestoreHelper.load('corpus', 'fileGroups');
+                if (data && data.fileGroups) {
+                    this.fileGroups = data.fileGroups;
+                    // 파일 그룹별 항목 수 업데이트
+                    this.fileGroups.forEach(fileGroup => {
+                        const count = this.data.filter(item => item.fileGroupId === fileGroup.id).length;
+                        fileGroup.itemCount = count;
+                    });
+                    // LocalStorage에도 백업 저장
+                    localStorage.setItem('corpusFileGroups', JSON.stringify(this.fileGroups));
+                    // Firestore에도 저장
+                    if (window.FirestoreHelper) {
+                        FirestoreHelper.save('corpus', 'fileGroups', {
+                            fileGroups: this.fileGroups
+                        }).catch(error => {
+                            console.error('Firestore에 파일 그룹 저장 실패:', error);
+                        });
+                    }
+                    return;
+                }
+            }
+        } catch (error) {
+            console.log('Firestore에서 파일 그룹 로드 실패, LocalStorage 사용:', error);
+        }
+
+        // LocalStorage에서 로드
         const savedFileGroups = localStorage.getItem('corpusFileGroups');
         if (savedFileGroups) {
             try {
@@ -59,8 +118,20 @@ class CorpusManager {
     }
 
     // 데이터 저장
-    saveData() {
+    async saveData() {
+        // LocalStorage에 저장 (즉시 반응)
         localStorage.setItem('corpusData', JSON.stringify(this.data));
+        
+        // Firestore에도 저장 (비동기)
+        try {
+            if (window.FirestoreHelper) {
+                await FirestoreHelper.save('corpus', 'data', {
+                    items: this.data
+                });
+            }
+        } catch (error) {
+            console.error('Firestore에 코퍼스 데이터 저장 실패:', error);
+        }
     }
 
     // 이벤트 리스너 설정
@@ -509,7 +580,16 @@ class CorpusManager {
 
         // 데이터 저장
         this.saveData();
+        // 파일 그룹 저장
         localStorage.setItem('corpusFileGroups', JSON.stringify(this.fileGroups));
+        // Firestore에도 저장
+        if (window.FirestoreHelper) {
+            FirestoreHelper.save('corpus', 'fileGroups', {
+                fileGroups: this.fileGroups
+            }).catch(error => {
+                console.error('Firestore에 파일 그룹 저장 실패:', error);
+            });
+        }
 
         // 목록 새로고침
         this.filterTerms();
@@ -1161,6 +1241,14 @@ class CorpusManager {
                     const count = this.data.filter(item => item.fileGroupId === this.selectedFileGroupId).length;
                     fileGroup.itemCount = count;
                     localStorage.setItem('corpusFileGroups', JSON.stringify(this.fileGroups));
+                    // Firestore에도 저장
+                    if (window.FirestoreHelper) {
+                        FirestoreHelper.save('corpus', 'fileGroups', {
+                            fileGroups: this.fileGroups
+                        }).catch(error => {
+                            console.error('Firestore에 파일 그룹 저장 실패:', error);
+                        });
+                    }
                 }
             }
             

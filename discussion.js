@@ -17,6 +17,63 @@ class DiscussionManager {
 
     // 데이터 로드
     async loadData() {
+        try {
+            // Firestore에서 먼저 시도
+            if (window.FirestoreHelper) {
+                const data = await FirestoreHelper.load('discussion', 'posts');
+                if (data && data.posts) {
+                    this.posts = data.posts.map(post => {
+                        if (post.term && !post.kr) {
+                            return {
+                                ...post,
+                                kr: post.term,
+                                jp: post.term,
+                                category: post.category || ''
+                            };
+                        }
+                        return {
+                            ...post,
+                            kr: post.kr || '',
+                            jp: post.jp || '',
+                            category: post.category || '',
+                            meaning: post.meaning || ''
+                        };
+                    });
+                    // LocalStorage에도 백업 저장
+                    localStorage.setItem('discussionPosts', JSON.stringify(this.posts));
+                    
+                    // 실시간 동기화 설정
+                    FirestoreHelper.onSnapshot('discussion', 'posts', (data) => {
+                        if (data && data.posts) {
+                            this.posts = data.posts.map(post => {
+                                if (post.term && !post.kr) {
+                                    return {
+                                        ...post,
+                                        kr: post.term,
+                                        jp: post.term,
+                                        category: post.category || ''
+                                    };
+                                }
+                                return {
+                                    ...post,
+                                    kr: post.kr || '',
+                                    jp: post.jp || '',
+                                    category: post.category || '',
+                                    meaning: post.meaning || ''
+                                };
+                            });
+                            localStorage.setItem('discussionPosts', JSON.stringify(this.posts));
+                            this.renderPosts();
+                        }
+                    });
+                    return;
+                }
+            }
+        } catch (error) {
+            console.log('Firestore에서 토론 데이터 로드 실패, LocalStorage 사용:', error);
+        }
+
+        // LocalStorage에서 로드
         const savedData = localStorage.getItem('discussionPosts');
         if (savedData) {
             const loadedPosts = JSON.parse(savedData);
@@ -45,12 +102,39 @@ class DiscussionManager {
     }
 
     // 데이터 저장
-    saveData() {
+    async saveData() {
+        // LocalStorage에 저장 (즉시 반응)
         localStorage.setItem('discussionPosts', JSON.stringify(this.posts));
+        
+        // Firestore에도 저장 (비동기)
+        try {
+            if (window.FirestoreHelper) {
+                await FirestoreHelper.save('discussion', 'posts', {
+                    posts: this.posts
+                });
+            }
+        } catch (error) {
+            console.error('Firestore에 토론 데이터 저장 실패:', error);
+        }
     }
 
     // 작성자 로드
     async loadAuthors() {
+        try {
+            // Firestore에서 먼저 시도
+            if (window.FirestoreHelper) {
+                const data = await FirestoreHelper.load('discussion', 'authors');
+                if (data && data.authors) {
+                    this.authors = data.authors;
+                    localStorage.setItem('discussionAuthors', JSON.stringify(this.authors));
+                    return;
+                }
+            }
+        } catch (error) {
+            console.log('Firestore에서 작성자 로드 실패, LocalStorage 사용:', error);
+        }
+
+        // LocalStorage에서 로드
         const savedAuthors = localStorage.getItem('discussionAuthors');
         if (savedAuthors) {
             this.authors = JSON.parse(savedAuthors);
@@ -60,12 +144,39 @@ class DiscussionManager {
     }
 
     // 작성자 저장
-    saveAuthors() {
+    async saveAuthors() {
+        // LocalStorage에 저장 (즉시 반응)
         localStorage.setItem('discussionAuthors', JSON.stringify(this.authors));
+        
+        // Firestore에도 저장 (비동기)
+        try {
+            if (window.FirestoreHelper) {
+                await FirestoreHelper.save('discussion', 'authors', {
+                    authors: this.authors
+                });
+            }
+        } catch (error) {
+            console.error('Firestore에 작성자 저장 실패:', error);
+        }
     }
 
     // 카테고리 로드
     async loadCategories() {
+        try {
+            // Firestore에서 먼저 시도
+            if (window.FirestoreHelper) {
+                const data = await FirestoreHelper.load('discussion', 'categories');
+                if (data && data.categories) {
+                    this.categories = data.categories;
+                    localStorage.setItem('discussionCategories', JSON.stringify(this.categories));
+                    return;
+                }
+            }
+        } catch (error) {
+            console.log('Firestore에서 카테고리 로드 실패, LocalStorage 사용:', error);
+        }
+
+        // LocalStorage에서 로드
         const savedCategories = localStorage.getItem('discussionCategories');
         if (savedCategories) {
             this.categories = JSON.parse(savedCategories);
@@ -75,8 +186,20 @@ class DiscussionManager {
     }
 
     // 카테고리 저장
-    saveCategories() {
+    async saveCategories() {
+        // LocalStorage에 저장 (즉시 반응)
         localStorage.setItem('discussionCategories', JSON.stringify(this.categories));
+        
+        // Firestore에도 저장 (비동기)
+        try {
+            if (window.FirestoreHelper) {
+                await FirestoreHelper.save('discussion', 'categories', {
+                    categories: this.categories
+                });
+            }
+        } catch (error) {
+            console.error('Firestore에 카테고리 저장 실패:', error);
+        }
     }
 
     // API 키 관련 이벤트 리스너 설정
@@ -88,7 +211,18 @@ class DiscussionManager {
         // API 키 상태 표시 업데이트 함수
         const updateApiKeyStatus = () => {
             const apiKey = localStorage.getItem('claude_api_key');
+            const apiKeySection = document.getElementById('apiKeySection');
             const statusText = document.getElementById('apiKeyStatus');
+            
+            // API 키가 있으면 섹션 숨기기, 없으면 표시
+            if (apiKeySection) {
+                if (apiKey && apiKey.trim()) {
+                    apiKeySection.style.display = 'none';
+                } else {
+                    apiKeySection.style.display = 'block';
+                }
+            }
+            
             if (statusText) {
                 if (apiKey && apiKey.trim()) {
                     statusText.textContent = '✅ API 키가 저장되어 있습니다. 의미(AI) 기능을 사용할 수 있습니다.';
@@ -1078,7 +1212,7 @@ class DiscussionManager {
             }
 
             // Netlify Functions 또는 로컬 서버를 통해 API 호출
-            const apiUrl = '/api/claude';
+            const apiUrl = window.getClaudeApiUrl ? window.getClaudeApiUrl() : '/api/claude';
             
             console.log('[DEBUG] API 호출 시도');
             console.log('[DEBUG] 현재 URL:', window.location.href);

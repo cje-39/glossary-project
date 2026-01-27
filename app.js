@@ -40,6 +40,22 @@ class GlossaryManager {
 
     // 카테고리 로드
     async loadCategories() {
+        try {
+            // Firestore에서 먼저 시도
+            if (window.FirestoreHelper) {
+                const data = await FirestoreHelper.load('glossary', 'categories');
+                if (data && data.categories) {
+                    this.categories = data.categories;
+                    // LocalStorage에도 백업 저장
+                    localStorage.setItem('glossaryCategories', JSON.stringify(this.categories));
+                    return;
+                }
+            }
+        } catch (error) {
+            console.log('Firestore에서 카테고리 로드 실패, LocalStorage 사용:', error);
+        }
+
+        // LocalStorage에서 로드
         const savedCategories = localStorage.getItem('glossaryCategories');
         if (savedCategories) {
             this.categories = JSON.parse(savedCategories);
@@ -49,13 +65,62 @@ class GlossaryManager {
     }
 
     // 카테고리 저장
-    saveCategories() {
+    async saveCategories() {
+        // LocalStorage에 저장 (즉시 반응)
         localStorage.setItem('glossaryCategories', JSON.stringify(this.categories));
+        
+        // Firestore에도 저장 (비동기)
+        try {
+            if (window.FirestoreHelper) {
+                await FirestoreHelper.save('glossary', 'categories', {
+                    categories: this.categories
+                });
+            }
+        } catch (error) {
+            console.error('Firestore에 카테고리 저장 실패:', error);
+        }
     }
 
-    // 데이터 로드 (로컬 스토리지 또는 JSON 파일)
+    // 데이터 로드 (Firestore → LocalStorage → JSON 파일)
     async loadData() {
-        // 먼저 로컬 스토리지 확인
+        try {
+            // Firestore에서 먼저 시도
+            if (window.FirestoreHelper) {
+                const data = await FirestoreHelper.load('glossary', 'terms');
+                if (data && data.terms && Array.isArray(data.terms)) {
+                    this.terms = data.terms.map(term => ({
+                        ...term,
+                        category: Array.isArray(term.category) ? term.category : (term.category ? [term.category] : []),
+                        updatedAt: term.updatedAt || term.createdAt || new Date().toISOString()
+                    }));
+                    // LocalStorage에도 백업 저장
+                    localStorage.setItem('glossaryData', JSON.stringify(this.terms));
+                    this.filteredTerms = [...this.terms];
+                    
+                    // 실시간 동기화 설정
+                    FirestoreHelper.onSnapshot('glossary', 'terms', (data) => {
+                        if (data && data.terms) {
+                            this.terms = data.terms.map(term => ({
+                                ...term,
+                                category: Array.isArray(term.category) ? term.category : (term.category ? [term.category] : []),
+                                updatedAt: term.updatedAt || term.createdAt || new Date().toISOString()
+                            }));
+                            localStorage.setItem('glossaryData', JSON.stringify(this.terms));
+                            this.filteredTerms = [...this.terms];
+                            this.renderCategoryCards();
+                            if (this.currentView === 'terms') {
+                                this.renderTerms();
+                            }
+                        }
+                    });
+                    return;
+                }
+            }
+        } catch (error) {
+            console.log('Firestore에서 데이터 로드 실패, LocalStorage 사용:', error);
+        }
+
+        // LocalStorage에서 로드
         const savedData = localStorage.getItem('glossaryData');
         if (savedData) {
             const loadedTerms = JSON.parse(savedData);
@@ -87,8 +152,20 @@ class GlossaryManager {
     }
 
     // 데이터 저장
-    saveData() {
+    async saveData() {
+        // LocalStorage에 저장 (즉시 반응)
         localStorage.setItem('glossaryData', JSON.stringify(this.terms));
+        
+        // Firestore에도 저장 (비동기)
+        try {
+            if (window.FirestoreHelper) {
+                await FirestoreHelper.save('glossary', 'terms', {
+                    terms: this.terms
+                });
+            }
+        } catch (error) {
+            console.error('Firestore에 데이터 저장 실패:', error);
+        }
     }
 
     // 이벤트 리스너 설정

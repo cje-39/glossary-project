@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalStorage → Firestore 마이그레이션</title>
+    <style>
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #333;
+            font-size: 1.2em;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .data-preview {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .count {
+            font-weight: bold;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 LocalStorage → Firestore 마이그레이션</h1>
+        <p class="subtitle">기존 브라우저 데이터를 Firestore로 업로드합니다</p>
+
+        <!-- 용어집 데이터 -->
+        <div class="section">
+            <h2>📝 용어집 데이터</h2>
+            <div id="glossaryStatus" class="status info">확인 중...</div>
+            <div id="glossaryPreview" class="data-preview" style="display: none;"></div>
+            <button id="migrateGlossaryBtn" onclick="migrateGlossary()" disabled>마이그레이션</button>
+            <button onclick="checkGlossary()">데이터 확인</button>
+        </div>
+
+        <!-- 코퍼스 데이터 -->
+        <div class="section">
+            <h2>📖 코퍼스 데이터</h2>
+            <div id="corpusStatus" class="status info">확인 중...</div>
+            <div id="corpusPreview" class="data-preview" style="display: none;"></div>
+            <button id="migrateCorpusBtn" onclick="migrateCorpus()" disabled>마이그레이션</button>
+            <button onclick="checkCorpus()">데이터 확인</button>
+        </div>
+
+        <!-- 토론 데이터 -->
+        <div class="section">
+            <h2>💬 토론 데이터</h2>
+            <div id="discussionStatus" class="status info">확인 중...</div>
+            <div id="discussionPreview" class="data-preview" style="display: none;"></div>
+            <button id="migrateDiscussionBtn" onclick="migrateDiscussion()" disabled>마이그레이션</button>
+            <button onclick="checkDiscussion()">데이터 확인</button>
+        </div>
+
+        <!-- 전체 마이그레이션 -->
+        <div class="section">
+            <h2>🚀 전체 마이그레이션</h2>
+            <p>모든 데이터를 한 번에 마이그레이션합니다.</p>
+            <button onclick="migrateAll()" style="background: #28a745; font-size: 16px; padding: 15px 30px;">전체 마이그레이션 실행</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK v8 (CDN 호환, body 끝에 배치) -->
+    <script>
+        // 스크립트를 순차적으로 로드
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = () => reject(new Error(`스크립트 로드 실패: ${src}`));
+                document.head.appendChild(script);
+            });
+        }
+
+        // Firebase 초기화 함수
+        async function initializeFirebase() {
+            try {
+                // Firebase SDK 순차 로드
+                console.log('Firebase SDK 로딩 시작...');
+                await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
+                console.log('firebase-app.js 로드 완료');
+                
+                await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js');
+                console.log('firebase-firestore.js 로드 완료');
+                
+                await loadScript('firebase-init.js');
+                console.log('firebase-init.js 로드 완료');
+
+                // Firebase SDK가 로드되었는지 확인
+                if (typeof firebase === 'undefined') {
+                    throw new Error('Firebase SDK가 로드되지 않았습니다.');
+                }
+
+                // Firebase 초기화
+                await initFirebase();
+                console.log('Firebase 초기화 완료');
+
+                // 상태 업데이트
+                document.querySelectorAll('.status.info').forEach(el => {
+                    el.textContent = '✅ Firebase 연결 완료';
+                    el.className = 'status success';
+                });
+
+                // 데이터 확인
+                checkGlossary();
+                checkCorpus();
+                checkDiscussion();
+            } catch (error) {
+                console.error('Firebase 초기화 오류:', error);
+                document.querySelectorAll('.status.info').forEach(el => {
+                    el.textContent = '❌ Firebase 연결 실패: ' + error.message;
+                    el.className = 'status error';
+                });
+            }
+        }
+
+        // 페이지 로드 시 초기화
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeFirebase);
+        } else {
+            initializeFirebase();
+        }
+
+        // Firebase 초기화 확인
+        function checkFirebaseReady() {
+            if (typeof firebase === 'undefined' || typeof FirestoreHelper === 'undefined') {
+                throw new Error('Firebase SDK가 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요.');
+            }
+        }
+
+        // 용어집 데이터 확인
+        async function checkGlossary() {
+            const statusEl = document.getElementById('glossaryStatus');
+            const previewEl = document.getElementById('glossaryPreview');
+            const btn = document.getElementById('migrateGlossaryBtn');
+
+            try {
+                // LocalStorage 확인
+                const localTerms = JSON.parse(localStorage.getItem('glossaryData') || '[]');
+                const localCategories = JSON.parse(localStorage.getItem('glossaryCategories') || '[]');
+
+                // Firestore 확인
+                let firestoreTerms = null;
+                let firestoreCategories = null;
+                if (window.FirestoreHelper) {
+                    const termsData = await FirestoreHelper.load('glossary', 'terms');
+                    const categoriesData = await FirestoreHelper.load('glossary', 'categories');
+                    firestoreTerms = termsData?.terms || null;
+                    firestoreCategories = categoriesData?.categories || null;
+                }
+
+                const localCount = localTerms.length;
+                const firestoreCount = firestoreTerms?.length || 0;
+                const localCatCount = localCategories.length;
+                const firestoreCatCount = firestoreCategories?.length || 0;
+
+                let status = `LocalStorage: <span class="count">${localCount}개</span> 용어, <span class="count">${localCatCount}개</span> 카테고리`;
+                if (firestoreCount > 0 || firestoreCatCount > 0) {
+                    status += ` | Firestore: <span class="count">${firestoreCount}개</span> 용어, <span class="count">${firestoreCatCount}개</span> 카테고리`;
+                }
+
+                if (localCount > 0 || localCatCount > 0) {
+                    if (firestoreCount === 0 && firestoreCatCount === 0) {
+                        statusEl.innerHTML = status + '<br>⚠️ Firestore에 데이터가 없습니다. 마이그레이션이 필요합니다.';
+                        statusEl.className = 'status error';
+                        btn.disabled = false;
+                    } else if (firestoreCount < localCount || firestoreCatCount < localCatCount) {
+                        statusEl.innerHTML = status + '<br>⚠️ Firestore 데이터가 LocalStorage보다 적습니다. 마이그레이션을 권장합니다.';
+                        statusEl.className = 'status error';
+                        btn.disabled = false;
+                    } else {
+                        statusEl.innerHTML = status + '<br>✅ 동기화 완료';
+                        statusEl.className = 'status success';
+                        btn.disabled = true;
+                    }
+                } else {
+                    statusEl.innerHTML = 'LocalStorage에 데이터가 없습니다.';
+                    statusEl.className = 'status info';
+                    btn.disabled = true;
+                }
+
+                if (localCount > 0) {
+                    previewEl.innerHTML = `<strong>용어 예시:</strong><br>${localTerms.slice(0, 3).map(t => `- ${t.kr || t.한국어 || ''} / ${t.jp || t.일본어 || ''}`).join('<br>')}`;
+                    previewEl.style.display = 'block';
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ 확인 실패: ' + error.message;
+                statusEl.className = 'status error';
+            }
+        }
+
+        // 코퍼스 데이터 확인
+        async function checkCorpus() {
+            const statusEl = document.getElementById('corpusStatus');
+            const previewEl = document.getElementById('corpusPreview');
+            const btn = document.getElementById('migrateCorpusBtn');
+
+            try {
+                checkFirebaseReady();
+                const localData = JSON.parse(localStorage.getItem('corpusData') || '[]');
+                const localFileGroups = JSON.parse(localStorage.getItem('corpusFileGroups') || '[]');
+
+                let firestoreData = null;
+                let firestoreFileGroups = null;
+                if (window.FirestoreHelper) {
+                    const data = await FirestoreHelper.load('corpus', 'data');
+                    const fileGroups = await FirestoreHelper.load('corpus', 'fileGroups');
+                    firestoreData = data?.items || null;
+                    firestoreFileGroups = fileGroups?.fileGroups || null;
+                }
+
+                const localCount = localData.length;
+                const firestoreCount = firestoreData?.length || 0;
+                const localGroupCount = localFileGroups.length;
+                const firestoreGroupCount = firestoreFileGroups?.length || 0;
+
+                let status = `LocalStorage: <span class="count">${localCount}개</span> 항목, <span class="count">${localGroupCount}개</span> 파일 그룹`;
+                if (firestoreCount > 0 || firestoreGroupCount > 0) {
+                    status += ` | Firestore: <span class="count">${firestoreCount}개</span> 항목, <span class="count">${firestoreGroupCount}개</span> 파일 그룹`;
+                }
+
+                if (localCount > 0 || localGroupCount > 0) {
+                    if (firestoreCount === 0 && firestoreGroupCount === 0) {
+                        statusEl.innerHTML = status + '<br>⚠️ Firestore에 데이터가 없습니다. 마이그레이션이 필요합니다.';
+                        statusEl.className = 'status error';
+                        btn.disabled = false;
+                    } else if (firestoreCount < localCount || firestoreGroupCount < localGroupCount) {
+                        statusEl.innerHTML = status + '<br>⚠️ Firestore 데이터가 LocalStorage보다 적습니다. 마이그레이션을 권장합니다.';
+                        statusEl.className = 'status error';
+                        btn.disabled = false;
+                    } else {
+                        statusEl.innerHTML = status + '<br>✅ 동기화 완료';
+                        statusEl.className = 'status success';
+                        btn.disabled = true;
+                    }
+                } else {
+                    statusEl.innerHTML = 'LocalStorage에 데이터가 없습니다.';
+                    statusEl.className = 'status info';
+                    btn.disabled = true;
+                }
+
+                if (localCount > 0) {
+                    previewEl.innerHTML = `<strong>항목 예시:</strong><br>${localData.slice(0, 3).map(d => `- ${d.korean || d.한국어 || ''} / ${d.japanese || d.일본어 || ''}`).join('<br>')}`;
+                    previewEl.style.display = 'block';
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ 확인 실패: ' + error.message;
+                statusEl.className = 'status error';
+            }
+        }
+
+        // 토론 데이터 확인
+        async function checkDiscussion() {
+            const statusEl = document.getElementById('discussionStatus');
+            const previewEl = document.getElementById('discussionPreview');
+            const btn = document.getElementById('migrateDiscussionBtn');
+
+            try {
+                checkFirebaseReady();
+                const localPosts = JSON.parse(localStorage.getItem('discussionPosts') || '[]');
+                const localAuthors = JSON.parse(localStorage.getItem('discussionAuthors') || '[]');
+                const localCategories = JSON.parse(localStorage.getItem('discussionCategories') || '[]');
+
+                let firestorePosts = null;
+                let firestoreAuthors = null;
+                let firestoreCategories = null;
+                if (window.FirestoreHelper) {
+                    const posts = await FirestoreHelper.load('discussion', 'posts');
+                    const authors = await FirestoreHelper.load('discussion', 'authors');
+                    const categories = await FirestoreHelper.load('discussion', 'categories');
+                    firestorePosts = posts?.posts || null;
+                    firestoreAuthors = authors?.authors || null;
+                    firestoreCategories = categories?.categories || null;
+                }
+
+                const localPostCount = localPosts.length;
+                const firestorePostCount = firestorePosts?.length || 0;
+                const localAuthorCount = localAuthors.length;
+                const firestoreAuthorCount = firestoreAuthors?.length || 0;
+                const localCatCount = localCategories.length;
+                const firestoreCatCount = firestoreCategories?.length || 0;
+
+                let status = `LocalStorage: <span class="count">${localPostCount}개</span> 게시물, <span class="count">${localAuthorCount}개</span> 작성자, <span class="count">${localCatCount}개</span> 카테고리`;
+                if (firestorePostCount > 0 || firestoreAuthorCount > 0 || firestoreCatCount > 0) {
+                    status += ` | Firestore: <span class="count">${firestorePostCount}개</span> 게시물, <span class="count">${firestoreAuthorCount}개</span> 작성자, <span class="count">${firestoreCatCount}개</span> 카테고리`;
+                }
+
+                if (localPostCount > 0 || localAuthorCount > 0 || localCatCount > 0) {
+                    if (firestorePostCount === 0 && firestoreAuthorCount === 0 && firestoreCatCount === 0) {
+                        statusEl.innerHTML = status + '<br>⚠️ Firestore에 데이터가 없습니다. 마이그레이션이 필요합니다.';
+                        statusEl.className = 'status error';
+                        btn.disabled = false;
+                    } else if (firestorePostCount < localPostCount || firestoreAuthorCount < localAuthorCount || firestoreCatCount < localCatCount) {
+                        statusEl.innerHTML = status + '<br>⚠️ Firestore 데이터가 LocalStorage보다 적습니다. 마이그레이션을 권장합니다.';
+                        statusEl.className = 'status error';
+                        btn.disabled = false;
+                    } else {
+                        statusEl.innerHTML = status + '<br>✅ 동기화 완료';
+                        statusEl.className = 'status success';
+                        btn.disabled = true;
+                    }
+                } else {
+                    statusEl.innerHTML = 'LocalStorage에 데이터가 없습니다.';
+                    statusEl.className = 'status info';
+                    btn.disabled = true;
+                }
+
+                if (localPostCount > 0) {
+                    previewEl.innerHTML = `<strong>게시물 예시:</strong><br>${localPosts.slice(0, 3).map(p => `- ${p.kr || p.term || ''} / ${p.jp || ''}`).join('<br>')}`;
+                    previewEl.style.display = 'block';
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ 확인 실패: ' + error.message;
+                statusEl.className = 'status error';
+            }
+        }
+
+        // 용어집 마이그레이션
+        async function migrateGlossary() {
+            const statusEl = document.getElementById('glossaryStatus');
+            const btn = document.getElementById('migrateGlossaryBtn');
+            
+            btn.disabled = true;
+            statusEl.textContent = '⏳ 마이그레이션 중...';
+            statusEl.className = 'status info';
+
+            try {
+                checkFirebaseReady();
+                const terms = JSON.parse(localStorage.getItem('glossaryData') || '[]');
+                const categories = JSON.parse(localStorage.getItem('glossaryCategories') || '[]');
+
+                if (window.FirestoreHelper) {
+                    await FirestoreHelper.save('glossary', 'terms', { terms });
+                    await FirestoreHelper.save('glossary', 'categories', { categories });
+                    statusEl.innerHTML = `✅ 마이그레이션 완료! <span class="count">${terms.length}개</span> 용어, <span class="count">${categories.length}개</span> 카테고리`;
+                    statusEl.className = 'status success';
+                } else {
+                    throw new Error('FirestoreHelper를 사용할 수 없습니다.');
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ 마이그레이션 실패: ' + error.message;
+                statusEl.className = 'status error';
+            } finally {
+                btn.disabled = false;
+                setTimeout(checkGlossary, 1000);
+            }
+        }
+
+        // 코퍼스 마이그레이션
+        async function migrateCorpus() {
+            const statusEl = document.getElementById('corpusStatus');
+            const btn = document.getElementById('migrateCorpusBtn');
+            
+            btn.disabled = true;
+            statusEl.textContent = '⏳ 마이그레이션 중...';
+            statusEl.className = 'status info';
+
+            try {
+                checkFirebaseReady();
+                const data = JSON.parse(localStorage.getItem('corpusData') || '[]');
+                const fileGroups = JSON.parse(localStorage.getItem('corpusFileGroups') || '[]');
+
+                if (window.FirestoreHelper) {
+                    await FirestoreHelper.save('corpus', 'data', { items: data });
+                    await FirestoreHelper.save('corpus', 'fileGroups', { fileGroups });
+                    statusEl.innerHTML = `✅ 마이그레이션 완료! <span class="count">${data.length}개</span> 항목, <span class="count">${fileGroups.length}개</span> 파일 그룹`;
+                    statusEl.className = 'status success';
+                } else {
+                    throw new Error('FirestoreHelper를 사용할 수 없습니다.');
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ 마이그레이션 실패: ' + error.message;
+                statusEl.className = 'status error';
+            } finally {
+                btn.disabled = false;
+                setTimeout(checkCorpus, 1000);
+            }
+        }
+
+        // 토론 마이그레이션
+        async function migrateDiscussion() {
+            const statusEl = document.getElementById('discussionStatus');
+            const btn = document.getElementById('migrateDiscussionBtn');
+            
+            btn.disabled = true;
+            statusEl.textContent = '⏳ 마이그레이션 중...';
+            statusEl.className = 'status info';
+
+            try {
+                checkFirebaseReady();
+                const posts = JSON.parse(localStorage.getItem('discussionPosts') || '[]');
+                const authors = JSON.parse(localStorage.getItem('discussionAuthors') || '[]');
+                const categories = JSON.parse(localStorage.getItem('discussionCategories') || '[]');
+
+                if (window.FirestoreHelper) {
+                    await FirestoreHelper.save('discussion', 'posts', { posts });
+                    await FirestoreHelper.save('discussion', 'authors', { authors });
+                    await FirestoreHelper.save('discussion', 'categories', { categories });
+                    statusEl.innerHTML = `✅ 마이그레이션 완료! <span class="count">${posts.length}개</span> 게시물, <span class="count">${authors.length}개</span> 작성자, <span class="count">${categories.length}개</span> 카테고리`;
+                    statusEl.className = 'status success';
+                } else {
+                    throw new Error('FirestoreHelper를 사용할 수 없습니다.');
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ 마이그레이션 실패: ' + error.message;
+                statusEl.className = 'status error';
+            } finally {
+                btn.disabled = false;
+                setTimeout(checkDiscussion, 1000);
+            }
+        }
+
+        // 전체 마이그레이션
+        async function migrateAll() {
+            if (!confirm('모든 데이터를 Firestore로 마이그레이션하시겠습니까?')) {
+                return;
+            }
+
+            try {
+                await migrateGlossary();
+                await new Promise(resolve => setTimeout(resolve, 500));
+                await migrateCorpus();
+                await new Promise(resolve => setTimeout(resolve, 500));
+                await migrateDiscussion();
+                
+                alert('✅ 전체 마이그레이션이 완료되었습니다!');
+            } catch (error) {
+                alert('❌ 마이그레이션 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

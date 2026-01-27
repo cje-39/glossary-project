@@ -21,8 +21,8 @@
             </div>
         </header>
 
-        <!-- AI API 키 설정 (숨김) -->
-        <div style="display: none; margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e0e0e0;">
+        <!-- AI API 키 설정 -->
+        <div id="apiKeySection" style="display: none; margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e0e0e0;">
             <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333; font-size: 13px;">
                 Claude API 키 (의미(AI) 기능 사용용)
             </label>
@@ -119,6 +119,35 @@
         </div>
     </div>
 
-    <script src="discussion.js"></script>
+    <!-- Firebase SDK v8 (CDN 호환) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="firebase-init.js"></script>
+    <script src="netlify-config.js"></script>
+    <script>
+        // Firebase SDK 로드 후 discussion.js 실행
+        (async function() {
+            // firebase-init.js가 로드될 때까지 대기
+            let attempts = 0;
+            while (typeof waitForFirebaseSDK === 'undefined' && attempts < 50) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            
+            try {
+                // Firebase SDK 로드 대기
+                if (typeof waitForFirebaseSDK === 'function') {
+                    await waitForFirebaseSDK();
+                }
+            } catch (error) {
+                console.error('Firebase SDK 로드 실패:', error);
+            }
+            
+            // discussion.js 로드
+            const script = document.createElement('script');
+            script.src = 'discussion.js';
+            document.body.appendChild(script);
+        })();
+    </script>
 </body>
 </html>

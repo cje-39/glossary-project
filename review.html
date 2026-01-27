@@ -100,8 +100,8 @@
         </header>
 
         <div style="padding: 20px;">
-            <!-- AI API 키 설정 (숨김) -->
-            <div style="display: none; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e0e0e0;">
+            <!-- AI API 키 설정 -->
+            <div id="apiKeySection" style="display: none; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e0e0e0;">
                 <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333; font-size: 13px;">
                     Claude API 키 (오탈자 점검 기능 사용용)
                 </label>
@@ -167,7 +167,12 @@
         </div>
     </div>
 
+    <!-- Firebase SDK v8 (CDN 호환) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="firebase-init.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="netlify-config.js"></script>
     <script src="review.js"></script>
 </body>
 </html>

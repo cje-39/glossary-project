@@ -16,10 +16,6 @@
     ],
     "rewrites": [
       {
-        "source": "/api/claude",
-        "function": "claude"
-      },
-      {
         "source": "**",
         "destination": "/index.html"
       }

@@ -152,6 +152,33 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <!-- Firebase SDK v8 (CDN 호환) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="firebase-init.js"></script>
+    <script>
+        // Firebase SDK 로드 후 app.js 실행
+        (async function() {
+            // firebase-init.js가 로드될 때까지 대기
+            let attempts = 0;
+            while (typeof waitForFirebaseSDK === 'undefined' && attempts < 50) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            
+            try {
+                if (typeof waitForFirebaseSDK === 'function') {
+                    await waitForFirebaseSDK();
+                }
+            } catch (error) {
+                console.error('Firebase SDK 로드 실패:', error);
+            }
+            
+            // app.js 로드
+            const script = document.createElement('script');
+            script.src = 'app.js';
+            document.body.appendChild(script);
+        })();
+    </script>
 </body>
 </html>
