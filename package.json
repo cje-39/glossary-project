@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "serve": "npx http-server . -p 8080 -o"
+    "serve": "npx http-server . -p 8080 -o",
+    "firebase:deploy": "firebase deploy",
+    "firebase:deploy:hosting": "firebase deploy --only hosting",
+    "firebase:deploy:functions": "firebase deploy --only functions"
   },
   "keywords": [
     "glossary",

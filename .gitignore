@@ -17,3 +17,10 @@ ENV/
 *~
 Thumbs.db
 .netlify/
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+functions/node_modules/
+# firebase-config.js는 공개되어도 괜찮지만, 필요시 주석 해제
+# firebase-config.js
