@@ -1,0 +1,647 @@
+/* ============================================
+   토론 페이지 스타일
+   ============================================ */
+
+.posts-container {
+    margin-top: 20px;
+}
+
+.posts-section {
+    margin-bottom: 40px;
+}
+
+.section-title {
+    font-size: 1.8em;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 20px;
+    font-family: 'KraftonFont', 'Pretendard', 'Nanum Gothic', 나눔고딕, sans-serif;
+}
+
+.posts-table-wrapper {
+    overflow-x: visible;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
+}
+
+.posts-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.posts-table th {
+    padding: 12px 8px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.9em;
+    color: white;
+    white-space: nowrap;
+    border-right: 1px solid #e0e0e0;
+    background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 50%, #2a2a2a 100%);
+}
+
+.posts-table td {
+    padding: 12px 8px;
+    font-size: 0.9em;
+    vertical-align: top;
+    border-right: 1px solid #e0e0e0;
+    text-align: center;
+}
+
+/* 컬럼 너비 설정 */
+.posts-table th:nth-child(1),
+.posts-table td:nth-child(1) {
+    width: 60px; /* 해결 */
+}
+
+.posts-table th:nth-child(2),
+.posts-table td:nth-child(2) {
+    width: 100px; /* 작성자 */
+}
+
+.posts-table th:nth-child(3),
+.posts-table td:nth-child(3) {
+    width: 120px; /* 카테고리 */
+}
+
+.posts-table th:nth-child(4),
+.posts-table td:nth-child(4) {
+    width: 100px; /* 언어방향 */
+}
+
+.posts-table th:nth-child(5),
+.posts-table td:nth-child(5) {
+    width: 150px; /* KR */
+}
+
+.posts-table th:nth-child(6),
+.posts-table td:nth-child(6) {
+    width: 150px; /* JP */
+}
+
+.posts-table th:nth-child(7),
+.posts-table td:nth-child(7) {
+    width: 350px; /* 의견 */
+}
+
+.posts-table th:nth-child(8),
+.posts-table td:nth-child(8) {
+    width: 200px; /* 비고/예시문 */
+}
+
+.posts-table th:nth-child(9),
+.posts-table td:nth-child(9) {
+    width: 300px; /* 의미(AI) */
+    min-width: 300px;
+}
+
+.posts-table th:nth-child(10),
+.posts-table td:nth-child(10) {
+    width: 60px; /* 삭제 */
+}
+
+.row-kr, .row-jp, .row-opinion, .row-note, .row-meaning {
+    text-align: left !important;
+}
+
+.row-resolve .resolve-checkbox-label {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.row-resolve .resolve-checkbox {
+    display: block !important;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #999;
+}
+
+.editable-cell {
+    cursor: text;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    min-height: 20px;
+}
+
+.editable-cell:hover {
+    background-color: #f5f5f5;
+}
+
+.editable-cell:focus {
+    background-color: #f5f5f5;
+    outline: 2px solid #2a2a2a;
+    outline-offset: -2px;
+}
+
+.cell-dropdown {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-size: 0.9em;
+    background: white;
+    cursor: pointer;
+}
+
+.cell-dropdown:focus {
+    outline: 2px solid #2a2a2a;
+    outline-offset: -2px;
+}
+
+.cell-input-new {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.opinion-cell-wrapper {
+    position: relative;
+}
+
+.opinion-cell-content {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.comment-count-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 1.1em;
+    color: #ffffff;
+    background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+    padding: 4px 8px;
+    border-radius: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-left: auto;
+}
+
+.comment-count-badge.active {
+    background: linear-gradient(135deg, #3a3a3a 0%, #4a4a4a 100%);
+    box-shadow: 0 2px 6px rgba(42, 42, 42, 0.4);
+    transform: scale(1.05);
+}
+
+.comments-container-popup {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    margin-top: 4px;
+    padding: 0;
+}
+
+.comments-list-section {
+    padding: 12px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.comments-form-section {
+    padding: 12px;
+}
+
+.comment-item {
+    padding: 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+.comment-item:last-child {
+    margin-bottom: 0;
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 0.9em;
+}
+
+.comment-header-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.btn-edit-comment, .btn-save-comment, .btn-cancel-comment-edit {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 1.2em;
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: all 0.2s;
+    border-radius: 4px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-edit-comment:hover {
+    background: #f0f0f0;
+    color: #666;
+}
+
+.btn-delete-comment {
+    background: #fee;
+    border: 1px solid #fcc;
+    color: #c33;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.2s;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-delete-comment:hover {
+    background: #fdd;
+    border-color: #f99;
+    color: #a22;
+}
+
+.btn-save-comment:hover {
+    background: #f0f0f0;
+    color: #27ae60;
+}
+
+.btn-cancel-comment-edit:hover {
+    background: #f0f0f0;
+    color: #e74c3c;
+}
+
+.comment-author {
+    font-weight: 600;
+    color: #ffffff;
+    background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+    padding: 4px 12px;
+    border-radius: 6px;
+    display: inline-block;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.comment-date {
+    color: #999;
+    font-size: 0.85em;
+}
+
+.comment-content {
+    color: #333;
+    line-height: 1.5;
+    margin-bottom: 40px;
+    padding-right: 60px;
+}
+
+.comment-footer {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-comment-like {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    font-size: 0.9em;
+}
+
+.btn-comment-like:hover {
+    background: #f5f5f5;
+}
+
+.like-icon {
+    font-size: 1em;
+}
+
+.like-count {
+    font-size: 0.9em;
+    color: #666;
+}
+
+.comment-empty {
+    text-align: center;
+    color: #999;
+    padding: 20px;
+    font-size: 0.9em;
+}
+
+.comment-form-inline {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.comment-form-inline .form-group {
+    margin-bottom: 0;
+}
+
+.comment-form-inline label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: #333;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 0.85em;
+}
+
+.row-actions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.btn-delete-post {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 1.5em;
+    cursor: pointer;
+    padding: 4px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    border-radius: 4px;
+}
+
+.btn-delete-post:hover {
+    background: #f0f0f0;
+    color: #e74c3c;
+}
+
+.meaning-cell-wrapper {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+}
+
+.meaning-content {
+    flex: 1;
+    min-height: 20px;
+    padding: 4px;
+    color: #333;
+    word-break: break-word;
+    white-space: pre-line;
+    overflow-wrap: break-word;
+}
+
+.btn-generate-meaning {
+    background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+    border: none;
+    color: white;
+    font-size: 1.2em;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-generate-meaning:hover {
+    background: linear-gradient(135deg, #3a3a3a 0%, #4a4a4a 100%);
+    transform: scale(1.05);
+}
+
+/* ============================================
+   모달 폼 스타일 통일
+   ============================================ */
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: auto;
+    padding: 0;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 2px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+    border-radius: 12px 12px 0 0;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: white;
+    font-size: 1.5em;
+    font-weight: 600;
+}
+
+.close {
+    color: white;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 1;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.close:hover {
+    opacity: 1;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-body .form-group {
+    margin-bottom: 20px;
+}
+
+.modal-body .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+
+.modal-body .form-group input[type="text"],
+.modal-body .form-group select,
+.modal-body .form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #ffffff;
+    transition: all 0.3s;
+    box-sizing: border-box;
+}
+
+.modal-body .form-group input[type="text"]:focus,
+.modal-body .form-group select:focus,
+.modal-body .form-group textarea:focus {
+    outline: none;
+    border-color: #5B7FFF;
+    box-shadow: 0 0 0 3px rgba(91, 127, 255, 0.2);
+}
+
+.modal-body .form-group select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+}
+
+.modal-body .form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.modal-body .form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+}
+
+/* 작성자 드롭다운 스타일 */
+.author-dropdown-toggle:hover {
+    border-color: #5B7FFF;
+}
+
+.author-dropdown-toggle:focus {
+    outline: none;
+    border-color: #5B7FFF;
+    box-shadow: 0 0 0 3px rgba(91, 127, 255, 0.2);
+}
+
+.author-dropdown-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.author-dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.author-dropdown-item:hover {
+    background-color: #f5f5f5;
+}
+
+.author-dropdown-item.selected {
+    background-color: #e8f0fe;
+    color: #1a73e8;
+    font-weight: 600;
+}
+
+.author-dropdown-item-name {
+    flex: 1;
+    font-size: 14px;
+}
+
+.author-dropdown-item-delete {
+    background: none;
+    border: none;
+    color: #e74c3c;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.author-dropdown-item-delete:hover {
+    background-color: #fee;
+    color: #c33;
+}

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Translation Review - East translation team</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid #e0e0e0;
+            border-top: 3px solid #4a90e2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        .file-upload-section {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 24px;
+        }
+        
+        .file-input-wrapper {
+            margin-bottom: 16px;
+        }
+        
+        .file-input-wrapper label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .file-info {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .extracted-text-section {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+        
+        .extracted-text-section.show {
+            display: block;
+        }
+        
+        .text-content {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            max-height: 500px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .text-stats {
+            margin-top: 16px;
+            padding: 12px;
+            background: #e8f0fe;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #1a73e8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Translation Review</h1>
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="hub.html" class="btn btn-primary" style="text-decoration: none; display: inline-block; padding: 8px 16px; font-size: 13px;">🏠 Main page</a>
+            </div>
+        </header>
+
+        <div style="padding: 20px;">
+            <!-- 파일 업로드 섹션 -->
+            <div class="file-upload-section">
+                <h2 style="margin-top: 0; margin-bottom: 20px; font-size: 1.5em; color: #333;">오탈자 검사</h2>
+                <p style="color: #666; margin-bottom: 20px; font-size: 14px;">
+                    번역 파일을 업로드하여 텍스트를 추출하고 오탈자를 검사할 수 있습니다. (PPTX, DOCX 파일 지원)
+                </p>
+                
+                <div class="file-input-wrapper">
+                    <label for="fileInput">번역 파일 선택</label>
+                    <input type="file" id="fileInput" accept=".pptx,.docx" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                    <div id="fileInfo" class="file-info" style="display: none;"></div>
+                </div>
+                
+                <div style="display: flex; gap: 12px; margin-top: 16px;">
+                    <button id="extractBtn" class="btn btn-primary" style="padding: 10px 20px; font-size: 14px;" disabled>텍스트 추출</button>
+                    <button id="clearBtn" class="btn btn-secondary" style="padding: 10px 20px; font-size: 14px;" disabled>초기화</button>
+                </div>
+                
+                <div id="loadingInfo" style="display: none; margin-top: 16px; padding: 15px; background: #f0f7ff; border-radius: 8px; border: 1px solid #b3d9ff;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="spinner"></div>
+                        <div>
+                            <strong style="color: #1a1a1a;">⏳ 텍스트 추출 중...</strong>
+                            <div id="loadingMessage" style="color: #666; font-size: 13px; margin-top: 4px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 추출된 텍스트 표시 섹션 -->
+            <div id="extractedTextSection" class="extracted-text-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0; font-size: 1.5em; color: #333;">추출된 텍스트</h2>
+                    <button id="checkSpellingBtn" class="btn btn-primary" style="padding: 10px 20px; font-size: 14px;" disabled>오탈자 점검</button>
+                </div>
+                <div id="textStats" class="text-stats"></div>
+                <div id="textContent" class="text-content"></div>
+                
+                <!-- 오탈자 점검 결과 섹션 -->
+                <div id="spellingResultSection" style="display: none; margin-top: 24px; padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e0e0e0;">
+                    <h3 style="margin-top: 0; margin-bottom: 20px; font-size: 1.2em; color: #333;">오탈자 점검 결과</h3>
+                    <div id="spellingResult" style="background: white; padding: 20px; border-radius: 6px; border: 1px solid #e0e0e0; white-space: pre-wrap; word-wrap: break-word; font-size: 14px; line-height: 1.8; max-height: 600px; overflow-y: auto;">
+                        <!-- 결과가 여기에 표시됩니다 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="review.js"></script>
+</body>
+</html>

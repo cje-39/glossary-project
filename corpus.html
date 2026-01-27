@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parallel Corpus - East translation team</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .file-delete-btn:hover {
+            background: #e0e0e0 !important;
+            color: #333 !important;
+            border-color: #ccc !important;
+        }
+        
+        /* 파일 선택 버튼만 스타일링 */
+        input[type="file"]::file-selector-button {
+            padding: 8px 16px;
+            background: #f5f5f5;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            color: #333;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+            margin-right: 10px;
+        }
+        
+        input[type="file"]::file-selector-button:hover {
+            background: #e8e8e8;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        input[type="file"]::file-selector-button:active {
+            background: #e0e0e0;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Parallel Corpus</h1>
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="hub.html" class="btn btn-primary" style="text-decoration: none; display: inline-block; padding: 8px 16px; font-size: 13px;">🏠 Main page</a>
+            </div>
+        </header>
+
+        <div class="toolbar">
+            <div class="search-section-main">
+                <div style="display: flex; gap: 12px; align-items: center; width: 100%;">
+                    <input type="text" id="searchInput" placeholder="Search here" class="search-input-main" style="flex: 1;">
+                    <button id="categorySearchBtn" class="btn-search-main">SEARCH</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 병렬 텍스트 추출 도구 섹션 -->
+        <div class="ppt-extractor-section" style="margin: 20px 0; padding: 20px; background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%); border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); border: 1px solid #e0e0e0;">
+            <h2 style="font-size: 1.3em; margin-bottom: 15px; color: #1a1a1a;">병렬 텍스트 추출기</h2>
+            <p style="color: #666; margin-bottom: 20px; font-size: 14px;">
+                한국어-일본어 파일을 업로드하여 텍스트를 추출하고 병렬로 정리할 수 있습니다. PPT 파일 내 위치 정보를 기반으로 매칭합니다.
+            </p>
+            
+            <!-- AI API 키 설정 (숨김) -->
+            <div style="display: none; margin-bottom: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e0e0e0;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333; font-size: 13px;">
+                    Claude API 키 (선택사항 - AI 텍스트 처리용)
+                </label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="password" id="claudeApiKeyInput" placeholder="sk-ant-..." style="flex: 1; padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 13px;" value="">
+                    <button id="saveApiKeyBtn" class="btn btn-secondary" style="padding: 8px 16px; font-size: 13px;">저장</button>
+                    <button id="clearApiKeyBtn" class="btn btn-secondary" style="padding: 8px 16px; font-size: 13px;">삭제</button>
+                </div>
+                <div id="apiKeyStatus" style="font-size: 12px; margin-top: 8px; padding: 8px; background: #fff; border-radius: 4px; border: 1px solid #e0e0e0;">
+                    ⚠️ API 키 상태 확인 중...
+                </div>
+                <small style="color: #999; font-size: 11px; display: block; margin-top: 5px;">
+                    API 키가 없어도 위치 기준 매칭은 작동합니다. AI 기능만 비활성화됩니다.
+                </small>
+            </div>
+            
+            <div style="display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 250px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">KOR</label>
+                    <input type="file" id="koreanPptInput" accept=".pptx,.txt,.csv,.xlsx" style="width: 100%; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                    <div id="koreanPptStatus" style="margin-top: 5px; font-size: 12px; color: #666;"></div>
+                </div>
+                <div style="flex: 1; min-width: 250px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">JPN</label>
+                    <input type="file" id="japanesePptInput" accept=".pptx,.txt,.csv,.xlsx" style="width: 100%; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                    <div id="japanesePptStatus" style="margin-top: 5px; font-size: 12px; color: #666;"></div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
+                <button id="extractPptBtn" class="btn btn-primary" style="padding: 12px 24px; font-size: 14px;" disabled>
+                    텍스트 추출하기
+                </button>
+                <button id="clearExtractorBtn" class="btn btn-secondary" style="padding: 12px 24px; font-size: 14px;">
+                    초기화
+                </button>
+            </div>
+            
+            <div id="pptExtractResult" style="margin-top: 20px; display: none;">
+                <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <div id="pptExtractInfo" style="color: #666; font-size: 14px;"></div>
+                </div>
+                
+                <!-- 추출된 코퍼스 목록 테이블 -->
+                <div id="extractedCorpusTable" style="margin-top: 20px; margin-bottom: 20px; display: none;">
+                    <!-- 선택된 항목 관리 -->
+                    <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                        <div id="extractedSelectedCount" style="font-size: 14px; color: #666;"></div>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="deleteSelectedExtractedBtn" class="btn btn-danger" style="display: none; padding: 8px 16px; font-size: 13px;" onclick="if(window.pptExtractor) window.pptExtractor.deleteSelectedRows()">
+                                선택 항목 삭제
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="glossary-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;">
+                                        <input type="checkbox" id="selectAllExtractedCheckbox" title="전체 선택" onclick="if(window.pptExtractor) window.pptExtractor.toggleSelectAllExtracted(this.checked)">
+                                    </th>
+                                    <th style="width: 60px;">번호</th>
+                                    <th>KOR</th>
+                                    <th>JPN</th>
+                                    <th style="width: 80px;">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="extractedTableBody">
+                                <!-- 추출된 데이터가 여기에 동적으로 추가됩니다 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 페이지네이션 -->
+                    <div class="pagination" style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <label for="extractedItemsPerPageSelect" style="font-size: 14px; color: #666;">페이지당 항목 수:</label>
+                            <select id="extractedItemsPerPageSelect" style="padding: 6px 12px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 14px; background: white; cursor: pointer;" onchange="if(window.pptExtractor) window.pptExtractor.setExtractedItemsPerPage(parseInt(this.value))">
+                                <option value="10">10개씩 보기</option>
+                                <option value="20" selected>20개씩 보기</option>
+                                <option value="30">30개씩 보기</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <button id="extractedPrevBtn" class="btn btn-secondary" onclick="if(window.pptExtractor) window.pptExtractor.prevExtractedPage()">이전</button>
+                            <span id="extractedPageInfo" class="page-info">1 / 1</span>
+                            <button id="extractedNextBtn" class="btn btn-secondary" onclick="if(window.pptExtractor) window.pptExtractor.nextExtractedPage()">다음</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button id="addToCorpusBtn" class="btn btn-secondary" style="padding: 12px 24px; font-size: 14px;">
+                        ➕ 코퍼스에 추가
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 검색 결과 섹션 -->
+        <div id="searchResultSection" style="display: none; margin-top: 20px; padding: 20px; background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%); border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); border: 1px solid #e0e0e0;">
+            <h2 style="font-size: 1.3em; margin-bottom: 15px; color: #1a1a1a;">검색 결과</h2>
+            <div id="searchResultCount" style="color: #666; margin-bottom: 15px; font-size: 14px;"></div>
+            <div id="searchResultGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; margin-top: 15px;">
+                <!-- 검색 결과가 여기에 동적으로 추가됩니다 -->
+            </div>
+        </div>
+
+        <!-- 파일 목록 섹션 -->
+        <div id="fileListSection" style="margin: 20px 0; padding: 20px; background: #f9f9f9; border-radius: 12px; border: 1px solid #e0e0e0;">
+            <h3 style="font-size: 1.2em; margin-bottom: 15px; color: #1a1a1a;">코퍼스 목록</h3>
+            <div id="fileListGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
+                <!-- 파일 카드들이 여기에 동적으로 추가됩니다 -->
+            </div>
+        </div>
+
+        <!-- 코퍼스 목록 섹션 (파일 선택 시에만 표시) -->
+        <div id="corpusListSection" style="display: none; margin-top: 30px;">
+            <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+                <h3 id="selectedFileTitle" style="font-size: 1em; color: #1a1a1a; margin: 0;"></h3>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button id="addToGlossaryBtn" class="btn" style="padding: 8px 14px; font-size: 12px; white-space: nowrap; background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%); color: white; border: none; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                        선택 항목 글로서리에 추가
+                    </button>
+                    <button id="deleteSelectedBtn" class="btn" style="padding: 8px 14px; font-size: 12px; white-space: nowrap; background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%); color: white; border: none; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                        선택 항목 삭제
+                    </button>
+                    <button id="backToFileListBtn" class="btn" style="padding: 8px 14px; font-size: 12px; white-space: nowrap; background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%); color: white; border: none; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                        접기
+                    </button>
+                </div>
+            </div>
+            <div class="table-container">
+                <div style="margin-bottom: 10px; display: flex; justify-content: flex-start; align-items: center;">
+                    <div id="selectedCount" style="font-size: 14px; color: #666;"></div>
+                </div>
+                <table id="corpusTable" class="glossary-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">
+                                <input type="checkbox" id="selectAllCheckbox" title="전체 선택">
+                            </th>
+                            <th>번호</th>
+                            <th>KOR</th>
+                            <th>JPN</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- 데이터가 여기에 동적으로 추가됩니다 -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination" style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label for="itemsPerPageSelect" style="font-size: 14px; color: #666;">페이지당 항목 수:</label>
+                    <select id="itemsPerPageSelect" style="padding: 6px 12px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 14px; background: white; cursor: pointer;">
+                        <option value="10">10개씩 보기</option>
+                        <option value="20" selected>20개씩 보기</option>
+                        <option value="30">30개씩 보기</option>
+                    </select>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button id="prevBtn" class="btn btn-secondary">이전</button>
+                    <span id="pageInfo" class="page-info">1 / 1</span>
+                    <button id="nextBtn" class="btn btn-secondary">다음</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 글로서리에 추가 모달 -->
+    <div id="addToGlossaryModal" class="modal">
+        <div class="modal-content" style="max-width: 500px; padding: 30px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0; font-size: 1.3em;">글로서리에 추가</h2>
+                <span class="close" id="closeAddToGlossaryModal" style="font-size: 28px; font-weight: bold; cursor: pointer; color: #aaa;" onclick="corpusManager.closeAddToGlossaryModal()">&times;</span>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600;">카테고리 선택:</label>
+                <div id="glossaryCategoryCheckboxes" style="display: flex; flex-wrap: wrap; gap: 10px; padding: 10px; border: 1px solid #e0e0e0; border-radius: 4px; max-height: 200px; overflow-y: auto;">
+                    <!-- 카테고리 체크박스가 여기에 동적으로 추가됩니다 -->
+                </div>
+            </div>
+            <div style="margin-bottom: 20px; padding: 10px; background: #f5f5f5; border-radius: 4px;">
+                <div style="font-size: 14px; color: #666; margin-bottom: 5px;">추가할 항목:</div>
+                <div id="selectedCorpusItems" style="font-size: 13px; color: #333;">
+                    <!-- 선택된 코퍼스 항목이 여기에 표시됩니다 -->
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="cancelAddToGlossaryBtn" class="btn btn-secondary" style="padding: 10px 20px;" onclick="corpusManager.closeAddToGlossaryModal()">취소</button>
+                <button id="confirmAddToGlossaryBtn" class="btn btn-primary" style="padding: 10px 20px;" onclick="corpusManager.addSelectedToGlossary()">추가</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 항목 추가/수정 모달 -->
+    <div id="entryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">항목 추가</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="entryForm">
+                    <input type="hidden" id="entryId">
+                    <div class="form-group">
+                        <label for="koreanInput">한국어 *</label>
+                        <input type="text" id="koreanInput" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="japaneseInput">일본어 *</label>
+                        <input type="text" id="japaneseInput" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">저장</button>
+                        <button type="button" class="btn btn-secondary" id="cancelBtn">취소</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="corpus.js"></script>
+    <script src="ppt-extractor.js"></script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Term Discussion - East translation team</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="discussion.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Term Discussion</h1>
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="hub.html" class="btn btn-primary" style="text-decoration: none; display: inline-block; padding: 8px 16px; font-size: 13px;">🏠 Main page</a>
+            </div>
+        </header>
+
+        <!-- AI API 키 설정 (숨김) -->
+        <div style="display: none; margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e0e0e0;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333; font-size: 13px;">
+                Claude API 키 (의미(AI) 기능 사용용)
+            </label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="password" id="claudeApiKeyInput" placeholder="sk-ant-..." style="flex: 1; padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 13px;" value="">
+                <button id="saveApiKeyBtn" class="btn btn-secondary" style="padding: 8px 16px; font-size: 13px;">저장</button>
+                <button id="clearApiKeyBtn" class="btn btn-secondary" style="padding: 8px 16px; font-size: 13px;">삭제</button>
+            </div>
+            <div id="apiKeyStatus" style="font-size: 12px; margin-top: 8px; padding: 8px; background: #fff; border-radius: 4px; border: 1px solid #e0e0e0;">
+                ⚠️ API 키 상태 확인 중...
+            </div>
+            <small style="color: #999; font-size: 11px; display: block; margin-top: 5px;">
+                API 키가 없으면 의미(AI) 기능을 사용할 수 없습니다. Anthropic Console(https://console.anthropic.com)에서 API 키를 발급받으세요.
+            </small>
+        </div>
+
+        <div id="postsContainer" class="posts-container">
+            <!-- 게시물들이 여기에 동적으로 추가됩니다 -->
+        </div>
+    </div>
+
+    <!-- 새 게시물 작성 모달 -->
+    <div id="postModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">토론 등록하기</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="postForm">
+                    <div class="form-group">
+                        <label for="postAuthor">작성자 *</label>
+                        <div style="position: relative;">
+                            <div id="authorDropdown" class="author-dropdown" style="position: relative;">
+                                <div id="authorDropdownToggle" class="author-dropdown-toggle" style="width: 100%; padding: 10px 12px; border: 2px solid #e0e0e0; border-radius: 8px; background: #ffffff; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 14px;">
+                                    <span id="authorSelectedValue" style="color: #999;">선택하세요</span>
+                                    <span style="color: #999;">▼</span>
+                                </div>
+                                <input type="hidden" id="postAuthor" required>
+                                <div id="authorDropdownMenu" class="author-dropdown-menu" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 2px solid #e0e0e0; border-radius: 8px; margin-top: 4px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); z-index: 1000; max-height: 300px; overflow-y: auto;">
+                                    <div id="authorListItems" style="display: flex; flex-direction: column;">
+                                        <!-- 작성자 목록이 여기에 동적으로 추가됩니다 -->
+                                    </div>
+                                    <div style="border-top: 1px solid #e0e0e0; padding: 8px;">
+                                        <div id="newAuthorInput" style="display: none;">
+                                            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                                <input type="text" id="newAuthorName" placeholder="작성자 이름 입력" style="flex: 1; padding: 6px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 13px;">
+                                            </div>
+                                            <div style="display: flex; gap: 8px;">
+                                                <button type="button" id="saveAuthorBtn" class="btn btn-primary" style="flex: 1; padding: 6px; font-size: 13px;">저장</button>
+                                                <button type="button" id="cancelAuthorBtn" class="btn btn-secondary" style="flex: 1; padding: 6px; font-size: 13px;">취소</button>
+                                            </div>
+                                        </div>
+                                        <button type="button" id="addAuthorBtn" class="btn btn-secondary" style="width: 100%; padding: 8px; font-size: 13px;">+ 작성자 추가</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="postCategory">카테고리</label>
+                        <input type="text" id="postCategory" placeholder="카테고리를 입력하세요">
+                    </div>
+                    <div class="form-group">
+                        <label for="postDirection">언어 방향 *</label>
+                        <select id="postDirection" required>
+                            <option value="">선택하세요</option>
+                            <option value="한일">한일</option>
+                            <option value="일한">일한</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="postKR">KR</label>
+                        <input type="text" id="postKR" placeholder="한국어 단어를 입력하세요">
+                    </div>
+                    <div class="form-group">
+                        <label for="postJP">JP</label>
+                        <input type="text" id="postJP" placeholder="일본어 단어를 입력하세요">
+                    </div>
+                    <div class="form-group">
+                        <label for="postContent">의견 *</label>
+                        <textarea id="postContent" rows="6" required placeholder="의견을 입력하세요"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="postNote">비고/예시문</label>
+                        <textarea id="postNote" rows="4" placeholder="비고나 예시문을 입력하세요"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">게시</button>
+                        <button type="button" class="btn btn-secondary" id="cancelPostBtn">취소</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="discussion.js"></script>
+</body>
+</html>

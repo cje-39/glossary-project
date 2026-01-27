@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>East translation team Glossary</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>East translation team Glossary</h1>
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="hub.html" class="btn btn-primary" style="text-decoration: none; display: inline-block; padding: 8px 16px; font-size: 13px;">🏠 Main page</a>
+            </div>
+        </header>
+
+        <!-- 카테고리 카드 뷰 -->
+        <div id="categoryView" class="category-view">
+            <div class="category-toolbar">
+                <div class="search-section-main">
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <input type="text" id="categorySearchInput" placeholder="Search here" class="search-input-main" style="flex: 1;">
+                        <button id="categorySearchBtn" class="btn-search-main">SEARCH</button>
+                    </div>
+                    <div id="categoryFilterContainerMain" class="category-filter-container">
+                        <!-- 카테고리 필터 체크박스가 여기에 동적으로 추가됩니다 -->
+                    </div>
+                </div>
+            </div>
+            <div id="categoryGrid" class="category-grid">
+                <!-- 카테고리 카드들이 여기에 동적으로 추가됩니다 -->
+            </div>
+            <div style="text-align: right; margin-top: 20px;">
+                <button id="addCategoryBtnMain" class="btn btn-secondary category-manage-btn">카테고리 관리</button>
+            </div>
+        </div>
+
+        <!-- 용어 목록 뷰 (카테고리 선택 시 표시) -->
+        <div id="termListView" class="term-list-view" style="display: none;">
+            <div class="toolbar" style="position: relative;">
+                <button id="backToCategoriesBtn" class="btn-back-arrow" onclick="glossaryManager.showCategoryView()" title="카테고리로 돌아가기" style="position: absolute; top: 0; right: 0;">← Back</button>
+                <div class="csv-section">
+                    <input type="file" id="csvUploadInput" accept=".csv" style="display: none;">
+                    <button id="csvUploadBtn" class="btn btn-csv">CSV 업로드</button>
+                    <button id="csvDownloadBtn" class="btn btn-csv">CSV 다운로드</button>
+                    <button id="deleteSelectedTermsBtn" class="btn btn-danger" style="display: none;">선택 항목 삭제</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table id="glossaryTable" class="glossary-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">
+                                <input type="checkbox" id="selectAllGlossaryCheckbox" title="전체 선택">
+                            </th>
+                            <th>번호</th>
+                            <th class="sortable" data-sort="korean">
+                                한국어
+                                <span class="sort-arrow">↕</span>
+                            </th>
+                            <th class="sortable" data-sort="japanese">
+                                日本語
+                                <span class="sort-arrow">↕</span>
+                            </th>
+                            <th>카테고리</th>
+                            <th>비고</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- 용어 데이터가 여기에 동적으로 추가됩니다 -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination">
+                <button id="prevBtn" class="btn btn-secondary">이전</button>
+                <span id="pageInfo" class="page-info">1 / 1</span>
+                <button id="nextBtn" class="btn btn-secondary">다음</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 카테고리 관리 모달 -->
+    <div id="categoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>카테고리 관리</h2>
+                <span class="close-category">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="newCategoryInput">새 카테고리 추가</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="newCategoryInput" placeholder="예: #newgame" style="flex: 1;">
+                        <button type="button" id="addCategoryBtn" class="btn btn-primary">추가</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>카테고리 목록</label>
+                    <div id="categoryList" class="category-list">
+                        <!-- 카테고리 목록이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="closeCategoryBtn">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 용어 추가/수정 모달 -->
+    <div id="termModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">용어 추가</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="termForm">
+                    <input type="hidden" id="termId">
+                    <div class="form-group">
+                        <label for="koreanInput">한국어 *</label>
+                        <input type="text" id="koreanInput" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="japaneseInput">일본어 *</label>
+                        <input type="text" id="japaneseInput" required>
+                    </div>
+                    <div class="form-group">
+                        <label>카테고리</label>
+                        <div id="categoryCheckboxes" class="category-checkboxes">
+                            <!-- 카테고리 체크박스가 여기에 동적으로 추가됩니다 -->
+                        </div>
+                        <button type="button" id="manageCategoriesBtn" class="btn btn-link">카테고리 관리</button>
+                    </div>
+                    <div class="form-group">
+                        <label for="notesInput">비고</label>
+                        <textarea id="notesInput" rows="3" placeholder="용어에 대한 설명이나 참고사항"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">저장</button>
+                        <button type="button" class="btn btn-secondary" id="cancelBtn">취소</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
