@@ -15,5 +15,5 @@ ENV/
 *.swp
 *.swo
 *~
-.DS_Store
 Thumbs.db
+.netlify/

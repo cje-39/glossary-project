@@ -40,13 +40,15 @@
 
 ## 🚀 시작하기
 
-### 필수 요구사항
+### 로컬 개발
+
+#### 필수 요구사항
 
 - Python 3.x (서버 실행용)
 - Node.js (선택적, npm 패키지 사용 시)
 - 최신 웹 브라우저 (Chrome, Firefox, Edge 등)
 
-### 설치 및 실행
+#### 설치 및 실행
 
 1. **저장소 클론**
 ```bash
@@ -80,6 +82,17 @@ npm start
 - 서버 실행 후: `http://localhost:3000` (Python 서버) 또는 `http://localhost:8080` (Node.js 서버)
 - 또는 직접 `hub.html` 파일을 브라우저에서 열어도 됩니다 (일부 기능 제한)
 
+### Netlify 배포
+
+Netlify를 사용하여 배포하면 AI 기능도 함께 사용할 수 있습니다.
+
+**빠른 배포:**
+1. GitHub에 프로젝트 업로드
+2. [Netlify](https://www.netlify.com)에서 저장소 연결
+3. 자동 배포 완료
+
+자세한 내용은 [NETLIFY_DEPLOY.md](./NETLIFY_DEPLOY.md)를 참고하세요.
+
 ## 📁 프로젝트 구조
 
 ```
@@ -100,8 +113,13 @@ glossary-project/
 ├── hub.css               # Hub 페이지 스타일
 ├── discussion.css        # Discussion 페이지 스타일
 ├── package.json          # 프로젝트 설정
+├── netlify.toml          # Netlify 설정 파일
+├── netlify/
+│   └── functions/
+│       └── claude.js     # Netlify Functions (Claude API 프록시)
 ├── README.md             # 이 파일
 ├── README_SERVER.md      # 서버 설정 가이드
+├── NETLIFY_DEPLOY.md     # Netlify 배포 가이드
 ├── SPECIFICATION.md      # 상세 사양서
 └── data/
     └── glossary.json     # 초기 용어 데이터

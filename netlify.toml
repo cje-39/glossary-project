@@ -1,0 +1,34 @@
+# Netlify 설정 파일
+
+[build]
+  # 빌드 명령어 (필요한 경우)
+  command = ""
+  # 퍼블리시 디렉토리 (현재 디렉토리)
+  publish = "."
+
+# Functions 설정
+[functions]
+  # Functions 디렉토리
+  directory = "netlify/functions"
+  # Node.js 버전
+  node_bundler = "esbuild"
+
+# 리다이렉트 규칙 (SPA 지원 - 필요시 주석 해제)
+# [[redirects]]
+#   from = "/*"
+#   to = "/index.html"
+#   status = 200
+
+# API 프록시 리다이렉트
+[[redirects]]
+  from = "/api/claude"
+  to = "/.netlify/functions/claude"
+  status = 200
+
+# 헤더 설정 (CORS)
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "Content-Type"
+    Access-Control-Allow-Methods = "POST, OPTIONS"
