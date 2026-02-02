@@ -130,7 +130,9 @@ class GlossaryManager {
                             }));
                             localStorage.setItem('glossaryData', JSON.stringify(this.terms));
                             this.filteredTerms = [...this.terms];
-                            this.renderCategoryCards();
+                            if (this.currentView === 'categories') {
+                                this.renderCategoryCardsInitial();
+                            }
                             if (this.currentView === 'terms') {
                                 this.renderTerms();
                             }
@@ -209,7 +211,9 @@ class GlossaryManager {
         // 카테고리 검색 입력 (Enter 키로 검색)
         document.addEventListener('keypress', (e) => {
             if (e.target.id === 'categorySearchInput' && e.key === 'Enter') {
-                this.renderCategoryCards();
+                if (this.currentView === 'categories') {
+                    this.renderCategoryCardsInitial();
+                }
             }
         });
         
@@ -1326,7 +1330,7 @@ class GlossaryManager {
         
         // 카테고리 뷰면 카드 다시 렌더링
         if (this.currentView === 'categories') {
-            this.renderCategoryCards();
+            this.renderCategoryCardsInitial();
         }
     }
 
@@ -2268,7 +2272,7 @@ class GlossaryManager {
         
         // 카테고리 뷰면 카드 다시 렌더링
         if (this.currentView === 'categories') {
-            this.renderCategoryCards();
+            this.renderCategoryCardsInitial();
         }
         
         // 추출된 용어 목록에서 제거하고 테이블 다시 렌더링
@@ -2360,7 +2364,7 @@ class GlossaryManager {
         
         // 카테고리 뷰면 카드 다시 렌더링
         if (this.currentView === 'categories') {
-            this.renderCategoryCards();
+            this.renderCategoryCardsInitial();
         }
 
         alert(`총 ${addedCount}개의 용어가 추가되었습니다.${skippedCount > 0 ? `\n${skippedCount}개의 중복 항목이 건너뛰어졌습니다.` : ''}`);
