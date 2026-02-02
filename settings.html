@@ -258,6 +258,12 @@
                             await window.confluenceIntegration.initialize();
                         }
                         
+                        // 이메일 표시
+                        const emailInput = document.getElementById('confluenceEmail');
+                        if (emailInput && window.confluenceIntegration.email) {
+                            emailInput.value = window.confluenceIntegration.email;
+                        }
+                        
                         // API Token 표시 (마스킹)
                         const tokenInput = document.getElementById('apiToken');
                         if (tokenInput && window.confluenceIntegration.apiToken) {
@@ -321,25 +327,29 @@
                     });
                 },
 
-                removePageUrl(index) {
+                async removePageUrl(index) {
                     window.confluenceIntegration.monitoredPages.splice(index, 1);
                     this.renderPageUrlList();
+                    // 자동 저장
+                    await window.confluenceIntegration.saveSettings();
                 },
 
                 setupEventListeners() {
                     // 페이지 추가 버튼
                     const addBtn = document.getElementById('addPageUrlBtn');
                     if (addBtn) {
-                        addBtn.addEventListener('click', () => {
+                        addBtn.addEventListener('click', async () => {
                             if (!window.confluenceIntegration.monitoredPages) {
                                 window.confluenceIntegration.monitoredPages = [];
                             }
                             window.confluenceIntegration.monitoredPages.push('');
                             this.renderPageUrlList();
+                            // 자동 저장
+                            await window.confluenceIntegration.saveSettings();
                         });
                     }
 
-                    // API Token 표시/숨김 토글
+                    // API Token 표시/숨김 토글 및 자동 저장
                     const tokenInput = document.getElementById('apiToken');
                     if (tokenInput) {
                         tokenInput.addEventListener('focus', () => {
@@ -347,10 +357,36 @@
                                 tokenInput.value = tokenInput.getAttribute('data-token');
                             }
                         });
-                        tokenInput.addEventListener('blur', () => {
+                        tokenInput.addEventListener('blur', async () => {
                             if (tokenInput.value && tokenInput.value !== '••••••••••••••••') {
                                 tokenInput.setAttribute('data-token', tokenInput.value);
+                                window.confluenceIntegration.apiToken = tokenInput.value;
+                                // 자동 저장
+                                await window.confluenceIntegration.saveSettings();
                             }
+                        });
+                    }
+
+                    // 이메일 자동 저장
+                    const emailInput = document.getElementById('confluenceEmail');
+                    if (emailInput) {
+                        emailInput.addEventListener('blur', async () => {
+                            const email = emailInput.value.trim();
+                            if (email) {
+                                window.confluenceIntegration.email = email;
+                                // 자동 저장
+                                await window.confluenceIntegration.saveSettings();
+                            }
+                        });
+                    }
+
+                    // 체크 주기 자동 저장
+                    const intervalSelect = document.getElementById('checkInterval');
+                    if (intervalSelect) {
+                        intervalSelect.addEventListener('change', async () => {
+                            window.confluenceIntegration.checkInterval = parseInt(intervalSelect.value);
+                            // 자동 저장
+                            await window.confluenceIntegration.saveSettings();
                         });
                     }
 
@@ -712,6 +748,15 @@
                 },
 
                 async saveSettings() {
+                    // 이메일 저장
+                    const emailInput = document.getElementById('confluenceEmail');
+                    if (emailInput) {
+                        const email = emailInput.value.trim();
+                        if (email) {
+                            window.confluenceIntegration.email = email;
+                        }
+                    }
+
                     const tokenInput = document.getElementById('apiToken');
                     const intervalSelect = document.getElementById('checkInterval');
                     

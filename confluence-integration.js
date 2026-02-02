@@ -24,6 +24,7 @@ class ConfluenceIntegration {
                 const settings = await RealtimeDBHelper.get('settings/confluence');
                 if (settings) {
                     this.apiToken = settings.apiToken || null;
+                    this.email = settings.email || null;
                     this.monitoredPages = settings.monitoredPages || [];
                     this.checkInterval = settings.checkInterval || this.checkInterval;
                     this.lastCheckTime = settings.lastCheckTime || null;
@@ -34,6 +35,7 @@ class ConfluenceIntegration {
                 if (saved) {
                     const settings = JSON.parse(saved);
                     this.apiToken = settings.apiToken || null;
+                    this.email = settings.email || null;
                     this.monitoredPages = settings.monitoredPages || [];
                     this.checkInterval = settings.checkInterval || this.checkInterval;
                     this.lastCheckTime = settings.lastCheckTime || null;
@@ -48,6 +50,7 @@ class ConfluenceIntegration {
     async saveSettings() {
         const settings = {
             apiToken: this.apiToken,
+            email: this.email,
             monitoredPages: this.monitoredPages,
             checkInterval: this.checkInterval,
             lastCheckTime: this.lastCheckTime
