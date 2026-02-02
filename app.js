@@ -1424,7 +1424,7 @@ class GlossaryManager {
             
             // 카테고리 카드 다시 렌더링
             if (this.currentView === 'categories') {
-                this.renderCategoryCards();
+                this.renderCategoryCardsInitial();
             }
             
             // 카테고리 목록 다시 렌더링
@@ -1447,7 +1447,7 @@ class GlossaryManager {
             
             // 카테고리 카드 다시 렌더링
             if (this.currentView === 'categories') {
-                this.renderCategoryCards();
+                this.renderCategoryCardsInitial();
             }
             
             // 카테고리 목록 다시 렌더링
