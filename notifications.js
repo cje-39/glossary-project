@@ -88,7 +88,18 @@ class NotificationManager {
     toggleDropdown() {
         const dropdown = document.getElementById('notificationDropdown');
         if (dropdown) {
-            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+            const isHidden = dropdown.style.display === 'none' || !dropdown.style.display;
+            if (isHidden) {
+                // 드롭다운을 열 때 알림 다시 렌더링
+                this.renderNotifications();
+                dropdown.style.display = 'block';
+                console.log('알림 드롭다운 열림');
+            } else {
+                dropdown.style.display = 'none';
+                console.log('알림 드롭다운 닫힘');
+            }
+        } else {
+            console.error('notificationDropdown 요소를 찾을 수 없습니다.');
         }
     }
 
