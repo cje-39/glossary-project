@@ -145,6 +145,12 @@
                 <h2>Confluence API 설정</h2>
                 
                 <div class="form-group">
+                    <label for="confluenceEmail">이메일 *</label>
+                    <input type="email" id="confluenceEmail" placeholder="Confluence 계정 이메일을 입력하세요">
+                    <small>Confluence API는 이메일과 API Token을 함께 사용합니다.</small>
+                </div>
+
+                <div class="form-group">
                     <label for="apiToken">API Token *</label>
                     <input type="password" id="apiToken" placeholder="Confluence API Token을 입력하세요">
                     <small>
@@ -158,18 +164,32 @@
 
             <!-- 모니터링 페이지 설정 -->
             <div class="settings-section">
-                <h2>모니터링 페이지</h2>
+                <h2>Confluence 페이지</h2>
                 <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
-                    새 용어를 자동으로 감지할 Confluence 페이지 URL을 추가하세요.
+                    용어를 가져올 Confluence 페이지 URL을 입력하세요.
                 </p>
 
-                <div id="pageUrlList" class="page-url-list">
-                    <!-- 페이지 URL 목록이 여기에 동적으로 추가됩니다 -->
+                <div class="form-group">
+                    <label for="confluencePageUrl">페이지 URL</label>
+                    <input type="text" id="confluencePageUrl" placeholder="https://krafton.atlassian.net/wiki/spaces/.../pages/..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box;">
+                    <small>Confluence 페이지의 전체 URL을 입력하세요.</small>
                 </div>
 
-                <button type="button" id="addPageUrlBtn" class="btn btn-secondary btn-add-page">+ 페이지 추가</button>
+                <div style="margin-top: 15px;">
+                    <button type="button" id="fetchTermsBtn" class="btn btn-primary" style="padding: 12px 24px; font-size: 14px;">용어 가져오기</button>
+                </div>
 
-                <div id="pageUrlStatus" class="status-message" style="display: none;"></div>
+                <div id="fetchTermsStatus" class="status-message" style="display: none; margin-top: 15px;"></div>
+
+                <div id="newTermsList" style="display: none; margin-top: 20px;">
+                    <h3 style="font-size: 16px; margin-bottom: 15px;">새로운 용어</h3>
+                    <div id="newTermsTable" style="overflow-x: auto;">
+                        <!-- 새 용어 테이블이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                    <div style="margin-top: 15px; text-align: right;">
+                        <button type="button" id="addAllTermsBtn" class="btn btn-primary" style="padding: 10px 20px; font-size: 14px;">모든 용어 추가</button>
+                    </div>
+                </div>
             </div>
 
             <!-- 체크 주기 설정 -->
@@ -357,6 +377,22 @@
                             await this.saveSettings();
                         });
                     }
+
+                    // 용어 가져오기 버튼
+                    const fetchTermsBtn = document.getElementById('fetchTermsBtn');
+                    if (fetchTermsBtn) {
+                        fetchTermsBtn.addEventListener('click', async () => {
+                            await this.fetchTerms();
+                        });
+                    }
+
+                    // 모든 용어 추가 버튼
+                    const addAllTermsBtn = document.getElementById('addAllTermsBtn');
+                    if (addAllTermsBtn) {
+                        addAllTermsBtn.addEventListener('click', async () => {
+                            await this.addAllTerms();
+                        });
+                    }
                 },
 
                 async testConnection() {
@@ -457,6 +493,222 @@
                     } catch (error) {
                         this.showStatus('testStatus', 'error', `체크 실패: ${error.message}`);
                     }
+                },
+
+                async fetchTerms() {
+                    const statusDiv = document.getElementById('fetchTermsStatus');
+                    const pageUrlInput = document.getElementById('confluencePageUrl');
+                    const tokenInput = document.getElementById('apiToken');
+                    
+                    if (!statusDiv || !pageUrlInput) return;
+
+                    const pageUrl = pageUrlInput.value.trim();
+                    if (!pageUrl) {
+                        this.showStatus('fetchTermsStatus', 'error', '페이지 URL을 입력해주세요.');
+                        return;
+                    }
+
+                    const emailInput = document.getElementById('confluenceEmail');
+                    const email = emailInput ? emailInput.value.trim() : '';
+                    const token = tokenInput.value.trim() || tokenInput.getAttribute('data-token');
+                    
+                    if (!email) {
+                        this.showStatus('fetchTermsStatus', 'error', '이메일을 입력해주세요.');
+                        return;
+                    }
+                    
+                    if (!token || token === '••••••••••••••••') {
+                        this.showStatus('fetchTermsStatus', 'error', 'API Token을 입력해주세요.');
+                        return;
+                    }
+
+                    this.showStatus('fetchTermsStatus', 'info', '용어를 가져오는 중...');
+                    const fetchTermsBtn = document.getElementById('fetchTermsBtn');
+                    if (fetchTermsBtn) fetchTermsBtn.disabled = true;
+
+                    try {
+                        if (!window.confluenceIntegration.initialized) {
+                            await window.confluenceIntegration.initialize();
+                        }
+                        
+                        window.confluenceIntegration.apiToken = token;
+                        window.confluenceIntegration.email = email;
+                        const result = await window.confluenceIntegration.checkPage(pageUrl, email);
+                        const newTerms = result.newTerms || [];
+                        
+                        if (newTerms.length === 0) {
+                            this.showStatus('fetchTermsStatus', 'info', '새로운 용어가 없습니다.');
+                            document.getElementById('newTermsList').style.display = 'none';
+                        } else {
+                            this.displayNewTerms(newTerms);
+                            this.showStatus('fetchTermsStatus', 'success', `${newTerms.length}개의 새로운 용어를 찾았습니다.`);
+                        }
+                    } catch (error) {
+                        console.error('용어 가져오기 실패:', error);
+                        this.showStatus('fetchTermsStatus', 'error', `용어 가져오기 실패: ${error.message}`);
+                        document.getElementById('newTermsList').style.display = 'none';
+                    } finally {
+                        if (fetchTermsBtn) fetchTermsBtn.disabled = false;
+                    }
+                },
+
+                displayNewTerms(terms) {
+                    const listDiv = document.getElementById('newTermsList');
+                    const tableDiv = document.getElementById('newTermsTable');
+                    if (!listDiv || !tableDiv) return;
+
+                    let tableHTML = `
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                            <thead>
+                                <tr style="background: #f5f5f5; border-bottom: 2px solid #ddd;">
+                                    <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">한국어</th>
+                                    <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">日本語</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    terms.forEach((term) => {
+                        tableHTML += `
+                            <tr style="border-bottom: 1px solid #eee;">
+                                <td style="padding: 10px; border: 1px solid #ddd;">${this.escapeHtml(term.korean)}</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">${this.escapeHtml(term.japanese)}</td>
+                            </tr>
+                        `;
+                    });
+
+                    tableHTML += `</tbody></table>`;
+                    tableDiv.innerHTML = tableHTML;
+                    listDiv.style.display = 'block';
+                    window.newTermsData = terms;
+                },
+
+                async addAllTerms() {
+                    if (!window.newTermsData || window.newTermsData.length === 0) {
+                        alert('추가할 용어가 없습니다.');
+                        return;
+                    }
+
+                    const count = window.newTermsData.length;
+                    const confirmed = confirm(`${count}개의 새 용어 발견. 용어집에 추가하시겠습니까?`);
+                    if (!confirmed) return;
+
+                    try {
+                        const category = await this.selectCategory();
+                        let addedCount = 0;
+                        for (const term of window.newTermsData) {
+                            try {
+                                await this.addTermToGlossary(term, category);
+                                addedCount++;
+                            } catch (error) {
+                                console.error('용어 추가 실패:', term, error);
+                            }
+                        }
+                        alert(`${addedCount}개의 용어가 성공적으로 추가되었습니다.`);
+                        document.getElementById('newTermsList').style.display = 'none';
+                        window.newTermsData = [];
+                    } catch (error) {
+                        console.error('용어 추가 실패:', error);
+                        alert('용어 추가 중 오류가 발생했습니다: ' + error.message);
+                    }
+                },
+
+                async selectCategory() {
+                    return new Promise((resolve) => {
+                        const modal = document.createElement('div');
+                        modal.className = 'modal';
+                        modal.style.display = 'flex';
+                        modal.innerHTML = `
+                            <div class="modal-content" style="max-width: 400px;">
+                                <div class="modal-header">
+                                    <h2>카테고리 선택</h2>
+                                    <span class="close-modal" style="cursor: pointer; font-size: 24px; font-weight: bold;">&times;</span>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="form-group">
+                                        <label>카테고리 선택</label>
+                                        <div id="categorySelectCheckboxes" class="category-checkboxes"></div>
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="button" class="btn btn-primary" id="modalConfirmCategoryBtn">확인</button>
+                                        <button type="button" class="btn btn-secondary close-modal">취소</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        document.body.appendChild(modal);
+
+                        const checkboxesContainer = modal.querySelector('#categorySelectCheckboxes');
+                        if (checkboxesContainer && window.glossaryManager) {
+                            window.glossaryManager.categories.forEach(cat => {
+                                const checkbox = document.createElement('div');
+                                checkbox.className = 'category-checkbox-item';
+                                checkbox.innerHTML = `
+                                    <input type="radio" id="selectCat_${cat}" value="${cat}" name="selectCategory">
+                                    <label for="selectCat_${cat}">${cat}</label>
+                                `;
+                                checkboxesContainer.appendChild(checkbox);
+                            });
+                        }
+
+                        const closeModal = () => {
+                            document.body.removeChild(modal);
+                            resolve(null);
+                        };
+
+                        modal.querySelectorAll('.close-modal').forEach(btn => {
+                            btn.addEventListener('click', closeModal);
+                        });
+
+                        modal.addEventListener('click', (e) => {
+                            if (e.target === modal) closeModal();
+                        });
+
+                        const confirmBtn = modal.querySelector('#modalConfirmCategoryBtn');
+                        confirmBtn.addEventListener('click', () => {
+                            const selectedCategory = modal.querySelector('input[name="selectCategory"]:checked')?.value || null;
+                            document.body.removeChild(modal);
+                            resolve(selectedCategory);
+                        });
+                    });
+                },
+
+                async addTermToGlossary(term, category) {
+                    if (!window.glossaryManager) {
+                        throw new Error('GlossaryManager가 로드되지 않았습니다.');
+                    }
+
+                    const manager = window.glossaryManager;
+                    const korean = term.korean.trim();
+                    const japanese = term.japanese.trim();
+                    const selectedCategories = category ? [category] : [];
+
+                    if (!korean || !japanese) {
+                        throw new Error('한국어와 일본어는 필수 입력 항목입니다.');
+                    }
+
+                    const isDuplicate = manager.terms.some(t => 
+                        t.korean === korean && t.japanese === japanese
+                    );
+
+                    if (isDuplicate) return;
+
+                    let newId = 1;
+                    if (manager.terms.length > 0) {
+                        const maxId = Math.max(...manager.terms.map(t => t.id || 0));
+                        newId = maxId >= 1 ? maxId + 1 : 1;
+                    }
+
+                    manager.terms.push({
+                        id: newId,
+                        korean,
+                        japanese,
+                        category: selectedCategories,
+                        notes: 'Confluence 페이지에서 가져옴',
+                        updatedAt: new Date().toISOString()
+                    });
+
+                    await manager.saveData();
                 },
 
                 async saveSettings() {

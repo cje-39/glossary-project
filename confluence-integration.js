@@ -3,6 +3,7 @@ class ConfluenceIntegration {
     constructor() {
         this.baseURL = 'https://krafton.atlassian.net';
         this.apiToken = null;
+        this.email = null; // Confluence 계정 이메일
         this.monitoredPages = [];
         this.checkInterval = 60 * 60 * 1000; // 기본 1시간
         this.checkTimer = null;
@@ -85,7 +86,11 @@ class ConfluenceIntegration {
                     : '/api/confluence';
             }
             
-            const url = `${apiUrl}?pageId=${encodeURIComponent(pageId)}&apiToken=${encodeURIComponent(this.apiToken)}`;
+            // 이메일이 있으면 쿼리 파라미터에 포함
+            let url = `${apiUrl}?pageId=${encodeURIComponent(pageId)}&apiToken=${encodeURIComponent(this.apiToken)}`;
+            if (this.email) {
+                url += `&email=${encodeURIComponent(this.email)}`;
+            }
             
             console.log('Netlify Functions를 통해 Confluence API 호출 시도');
             
@@ -98,10 +103,19 @@ class ConfluenceIntegration {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                const errorMessage = errorData.error || `API 요청 실패: ${response.status} ${response.statusText}`;
+                let errorMessage = errorData.error || `API 요청 실패: ${response.status} ${response.statusText}`;
                 
-                if (response.status === 401) {
-                    throw new Error('인증 실패: API Token을 확인해주세요.');
+                // 403 에러인 경우 상세 정보 포함
+                if (response.status === 403) {
+                    console.error('403 Forbidden 상세 정보:', errorData);
+                    if (errorData.details) {
+                        errorMessage += `\n상세: ${JSON.stringify(errorData.details)}`;
+                    }
+                    if (errorData.possibleCauses) {
+                        errorMessage += `\n가능한 원인:\n${errorData.possibleCauses.map(c => `- ${c}`).join('\n')}`;
+                    }
+                } else if (response.status === 401) {
+                    throw new Error('인증 실패: API Token 또는 이메일을 확인해주세요.');
                 } else if (response.status === 404) {
                     throw new Error('페이지를 찾을 수 없습니다.');
                 }
@@ -269,7 +283,11 @@ class ConfluenceIntegration {
     }
 
     // 페이지 체크 및 새 용어 감지
-    async checkPage(pageUrl) {
+    async checkPage(pageUrl, email = null) {
+        // 이메일이 전달되면 저장
+        if (email) {
+            this.email = email;
+        }
         try {
             const pageId = this.extractPageId(pageUrl);
             const htmlContent = await this.fetchPageContent(pageId);
