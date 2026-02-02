@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>East translation team Glossary</title>
+    <title>Glossary</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,14 +14,38 @@
 <body>
     <div class="container">
         <header>
-            <h1>East translation team Glossary</h1>
-            <div style="text-align: center; margin-top: 15px;">
-                <a href="hub.html" class="btn btn-primary" style="text-decoration: none; display: inline-block; padding: 8px 16px; font-size: 13px;">🏠 Main page</a>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h1 style="margin: 0;">Glossary</h1>
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <div id="notificationBell" class="notification-bell" style="position: relative; cursor: pointer;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="color: #333;">
+                            <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 2 16 2 16H22C22 16 19 14.25 19 9C19 5.13 15.87 2 12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M9 21C9 22.1 9.9 23 11 23H13C14.1 23 15 22.1 15 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span id="notificationBadge" class="notification-badge" style="display: none; position: absolute; top: -5px; right: -5px; background: #ff4444; color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold;">0</span>
+                        <div id="notificationDropdown" class="notification-dropdown" style="display: none; position: absolute; top: 35px; right: 0; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 350px; max-width: 400px; max-height: 500px; overflow-y: auto; z-index: 1000;">
+                            <div style="padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                                <h3 style="margin: 0; font-size: 16px; font-weight: 600;">알림</h3>
+                                <button id="markAllReadBtn" class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px;">모두 읽음</button>
+                            </div>
+                            <div id="notificationList" style="max-height: 400px; overflow-y: auto;">
+                                <!-- 알림 목록이 여기에 동적으로 추가됩니다 -->
+                            </div>
+                            <div id="noNotifications" style="padding: 20px; text-align: center; color: #999; display: none;">알림이 없습니다.</div>
+                        </div>
+                    </div>
+                    <a href="settings.html" class="btn btn-secondary" style="text-decoration: none; display: inline-block; padding: 8px 16px; font-size: 13px;">⚙️ 설정</a>
+                    <a href="hub.html" class="btn btn-primary" style="text-decoration: none; display: inline-block; padding: 8px 16px; font-size: 13px;">← Main page</a>
+                </div>
             </div>
         </header>
 
         <!-- 카테고리 카드 뷰 -->
         <div id="categoryView" class="category-view">
+            <!-- 카테고리 카드 (고정 배치) -->
+            <div id="categoryGrid" class="category-grid" style="margin-bottom: 30px;">
+                <!-- 카테고리 카드들이 여기에 동적으로 추가됩니다 -->
+            </div>
             <div class="category-toolbar">
                 <div class="search-section-main">
                     <div style="display: flex; gap: 12px; align-items: center;">
@@ -31,12 +55,46 @@
                     <div id="categoryFilterContainerMain" class="category-filter-container">
                         <!-- 카테고리 필터 체크박스가 여기에 동적으로 추가됩니다 -->
                     </div>
+                    <!-- 검색 결과 영역 -->
+                    <div id="searchResultsContainer" style="margin-top: 20px; display: none;">
+                <h3 style="margin: 0 0 15px 0; font-size: 18px; color: #333;">검색 결과</h3>
+                <div class="table-container">
+                    <table id="searchResultsTable" class="glossary-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">
+                                    <input type="checkbox" id="selectAllSearchCheckbox" title="전체 선택">
+                                </th>
+                                <th>번호</th>
+                                <th class="sortable" data-sort="korean">
+                                    한국어
+                                    <span class="sort-arrow">↕</span>
+                                </th>
+                                <th class="sortable" data-sort="japanese">
+                                    日本語
+                                    <span class="sort-arrow">↕</span>
+                                </th>
+                                <th>카테고리</th>
+                                <th>비고</th>
+                                <th>관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="searchResultsBody">
+                            <!-- 검색 결과가 여기에 동적으로 추가됩니다 -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination" style="margin-top: 15px;">
+                    <button id="searchPrevBtn" class="btn btn-secondary">이전</button>
+                    <span id="searchPageInfo" class="page-info">1 / 1</span>
+                    <button id="searchNextBtn" class="btn btn-secondary">다음</button>
+                </div>
+                    </div>
                 </div>
             </div>
-            <div id="categoryGrid" class="category-grid">
-                <!-- 카테고리 카드들이 여기에 동적으로 추가됩니다 -->
-            </div>
-            <div style="text-align: right; margin-top: 20px;">
+            <div style="text-align: right; margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="viewAllTermsBtn" class="btn btn-primary" style="background: linear-gradient(135deg, #6c757d 0%, #7d868e 100%); color: #ffffff; border: none; border-radius: 8px; padding: 12px 24px; font-size: 14px; cursor: pointer; display: inline-block; box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);" onclick="window.glossaryManager && window.glossaryManager.showAllTerms()">전체 목록 보기</button>
+                <button id="addTermBtn" class="btn btn-primary" style="background: linear-gradient(135deg, #2b68dc 0%, #2b68dc 100%); color: #ffffff; border: none; border-radius: 8px; padding: 12px 24px; font-size: 14px; cursor: pointer; display: inline-block; box-shadow: 0 2px 8px rgba(43, 104, 220, 0.3);">용어 추가</button>
                 <button id="addCategoryBtnMain" class="btn btn-secondary category-manage-btn">카테고리 관리</button>
             </div>
         </div>
@@ -44,13 +102,18 @@
         <!-- 용어 목록 뷰 (카테고리 선택 시 표시) -->
         <div id="termListView" class="term-list-view" style="display: none;">
             <div class="toolbar" style="position: relative;">
-                <button id="backToCategoriesBtn" class="btn-back-arrow" onclick="glossaryManager.showCategoryView()" title="카테고리로 돌아가기" style="position: absolute; top: 0; right: 0;">← Back</button>
+                <button id="backToCategoriesBtn" class="btn-back-arrow" onclick="window.glossaryManager && window.glossaryManager.showCategoryView()" title="카테고리로 돌아가기" style="position: absolute; top: 0; right: 0;">← Back</button>
                 <div class="csv-section">
                     <input type="file" id="csvUploadInput" accept=".csv" style="display: none;">
                     <button id="csvUploadBtn" class="btn btn-csv">CSV 업로드</button>
                     <button id="csvDownloadBtn" class="btn btn-csv">CSV 다운로드</button>
                     <button id="deleteSelectedTermsBtn" class="btn btn-danger" style="display: none;">선택 항목 삭제</button>
                 </div>
+            </div>
+            <!-- 탭 영역 -->
+            <div id="termListTabs" style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e0e0e0;">
+                <button id="allTermsTab" class="term-list-tab active" onclick="window.glossaryManager && window.glossaryManager.switchTermTab('all')" style="padding: 12px 24px; background: #f0f0f0; border: none; border-bottom: 3px solid #0d4a1f; cursor: pointer; font-size: 14px; font-weight: 600; color: #333;">ALL</button>
+                <button id="categoryTermsTab" class="term-list-tab" onclick="window.glossaryManager && window.glossaryManager.switchTermTab('category')" style="padding: 12px 24px; background: #f0f0f0; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-size: 14px; font-weight: 600; color: #666;"></button>
             </div>
             <div class="table-container">
                 <table id="glossaryTable" class="glossary-table">
@@ -122,6 +185,40 @@
                 <span class="close">&times;</span>
             </div>
             <div class="modal-body">
+                <!-- 이미지에서 용어 추출 섹션 -->
+                <div class="form-group" style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #e0e0e0;">
+                    <label style="margin-bottom: 10px; display: block; font-weight: 600; color: #333;">📷 이미지에서 용어 추출</label>
+                    <p style="margin: 0 0 10px 0; color: #666; font-size: 13px;">이미지를 업로드하면 AI가 용어를 추출하여 한국어-일본어 쌍으로 정리해드립니다.</p>
+                    <div id="modalImageUploadArea" style="border: 2px dashed #0d4a1f; border-radius: 8px; padding: 30px; text-align: center; background: white; cursor: pointer; transition: all 0.3s; position: relative; min-height: 150px;" 
+                         ondrop="window.glossaryManager && window.glossaryManager.handleModalDrop(event)" 
+                         ondragover="window.glossaryManager && window.glossaryManager.handleModalDragOver(event)" 
+                         ondragleave="window.glossaryManager && window.glossaryManager.handleModalDragLeave(event)"
+                         onclick="document.getElementById('modalImageFileInput').click()">
+                        <input type="file" id="modalImageFileInput" accept="image/*" style="display: none;" onchange="window.glossaryManager && window.glossaryManager.handleModalImageSelect(event)">
+                        <div id="modalUploadAreaContent" style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                            <div style="font-size: 36px; margin-bottom: 8px;">📸</div>
+                            <p style="margin: 0; color: #666; font-size: 13px;">이미지를 드래그 앤 드롭하거나 클릭하여 선택</p>
+                            <p style="margin: 5px 0 0 0; color: #999; font-size: 11px;">PNG, JPG, GIF 지원 | Ctrl+V로 스크린샷 붙여넣기</p>
+                        </div>
+                        <div id="modalImagePreview" style="display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; padding: 15px; box-sizing: border-box;">
+                            <img id="modalPreviewImage" src="" alt="미리보기" style="max-width: 100%; max-height: 100%; border-radius: 8px; border: 1px solid #e0e0e0; object-fit: contain;">
+                            <button type="button" id="modalRemoveImageBtn" class="btn btn-secondary" style="position: absolute; top: 10px; right: 10px; padding: 6px 12px; font-size: 12px; z-index: 10;" onclick="event.stopPropagation(); window.glossaryManager && window.glossaryManager.removeModalImage()">이미지 제거</button>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
+                        <button type="button" id="modalExtractTermsBtn" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;" onclick="window.glossaryManager && window.glossaryManager.extractTermsFromModalImage()" disabled>용어 추출</button>
+                    </div>
+                    <div id="modalExtractedTermsContainer" style="margin-top: 15px; display: none;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #333;">추출된 용어</h4>
+                        <div id="modalExtractedTermsTable" style="overflow-x: auto; max-height: 300px; overflow-y: auto;">
+                            <!-- 추출된 용어 테이블이 여기에 동적으로 추가됩니다 -->
+                        </div>
+                        <div style="margin-top: 10px; display: flex; gap: 10px; justify-content: flex-end;">
+                            <button type="button" id="modalAddAllTermsBtn" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;" onclick="window.glossaryManager && window.glossaryManager.addAllModalExtractedTerms()">모든 용어 추가</button>
+                        </div>
+                    </div>
+                </div>
+                
                 <form id="termForm">
                     <input type="hidden" id="termId">
                     <div class="form-group">
@@ -137,7 +234,6 @@
                         <div id="categoryCheckboxes" class="category-checkboxes">
                             <!-- 카테고리 체크박스가 여기에 동적으로 추가됩니다 -->
                         </div>
-                        <button type="button" id="manageCategoriesBtn" class="btn btn-link">카테고리 관리</button>
                     </div>
                     <div class="form-group">
                         <label for="notesInput">비고</label>
@@ -155,7 +251,13 @@
     <!-- Firebase SDK v8 (CDN 호환) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="firebase-init.js"></script>
+    <script src="auth.js"></script>
+    <script src="netlify-config.js"></script>
+    <script src="confluence-integration.js"></script>
+    <script src="notifications.js"></script>
     <script>
         // Firebase SDK 로드 후 app.js 실행
         (async function() {
@@ -177,6 +279,29 @@
             // app.js 로드
             const script = document.createElement('script');
             script.src = 'app.js';
+            script.onload = function() {
+                // DOMContentLoaded가 이미 발생했을 수 있으므로 직접 초기화
+                if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                    if (typeof GlossaryManager !== 'undefined' && !window.glossaryManager) {
+                        window.glossaryManager = new GlossaryManager();
+                    }
+                    
+                    // NotificationManager 초기화
+                    if (typeof NotificationManager !== 'undefined' && window.NotificationManager) {
+                        window.NotificationManager.init();
+                    }
+                    
+                    // Confluence 통합 초기화 및 주기적 체크 시작
+                    if (window.confluenceIntegration) {
+                        window.confluenceIntegration.loadSettings().then(() => {
+                            if (window.confluenceIntegration.apiToken && 
+                                window.confluenceIntegration.monitoredPages.length > 0) {
+                                window.confluenceIntegration.startPeriodicCheck();
+                            }
+                        });
+                    }
+                }
+            };
             document.body.appendChild(script);
         })();
     </script>

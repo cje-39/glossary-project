@@ -18,6 +18,10 @@
     font-family: 'KraftonFont', 'Pretendard', 'Nanum Gothic', 나눔고딕, sans-serif;
 }
 
+.section-title.resolved-title {
+    color: #5B7FFF;
+}
+
 .posts-table-wrapper {
     overflow-x: visible;
     background: white;
@@ -48,6 +52,12 @@
     vertical-align: top;
     border-right: 1px solid #e0e0e0;
     text-align: center;
+}
+
+/* 해결된 게시물 행에 음영 추가 */
+.posts-table tr[data-resolved="true"] td {
+    background-color: #f5f5f5;
+    opacity: 0.8;
 }
 
 /* 컬럼 너비 설정 */
@@ -399,6 +409,28 @@
     justify-content: center;
 }
 
+.btn-edit-post {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 1.5em;
+    cursor: pointer;
+    padding: 4px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    border-radius: 4px;
+    margin-right: 4px;
+}
+
+.btn-edit-post:hover {
+    background: #f0f0f0;
+    color: #2b68dc;
+}
+
 .btn-delete-post {
     background: none;
     border: none;
@@ -558,8 +590,8 @@
 .modal-body .form-group select:focus,
 .modal-body .form-group textarea:focus {
     outline: none;
-    border-color: #5B7FFF;
-    box-shadow: 0 0 0 3px rgba(91, 127, 255, 0.2);
+    border-color: #2b68dc;
+    box-shadow: 0 0 0 3px rgba(13, 74, 31, 0.2);
 }
 
 .modal-body .form-group select {
@@ -587,13 +619,13 @@
 
 /* 작성자 드롭다운 스타일 */
 .author-dropdown-toggle:hover {
-    border-color: #5B7FFF;
+    border-color: #2b68dc;
 }
 
 .author-dropdown-toggle:focus {
     outline: none;
-    border-color: #5B7FFF;
-    box-shadow: 0 0 0 3px rgba(91, 127, 255, 0.2);
+    border-color: #2b68dc;
+    box-shadow: 0 0 0 3px rgba(13, 74, 31, 0.2);
 }
 
 .author-dropdown-item {

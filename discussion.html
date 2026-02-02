@@ -17,14 +17,14 @@
         <header>
             <h1>Term Discussion</h1>
             <div style="text-align: center; margin-top: 15px;">
-                <a href="hub.html" class="btn btn-primary" style="text-decoration: none; display: inline-block; padding: 8px 16px; font-size: 13px;">🏠 Main page</a>
+                <a href="hub.html" class="btn btn-primary" style="text-decoration: none; display: inline-block; padding: 8px 16px; font-size: 13px;">← Main page</a>
             </div>
         </header>
 
         <!-- AI API 키 설정 -->
         <div id="apiKeySection" style="display: none; margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e0e0e0;">
             <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333; font-size: 13px;">
-                Claude API 키 (의미(AI) 기능 사용용)
+                Claude API 키 (번역어 자동 제안(AI) 기능 사용용)
             </label>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <input type="password" id="claudeApiKeyInput" placeholder="sk-ant-..." style="flex: 1; padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 13px;" value="">
@@ -35,7 +35,7 @@
                 ⚠️ API 키 상태 확인 중...
             </div>
             <small style="color: #999; font-size: 11px; display: block; margin-top: 5px;">
-                API 키가 없으면 의미(AI) 기능을 사용할 수 없습니다. Anthropic Console(https://console.anthropic.com)에서 API 키를 발급받으세요.
+                API 키가 없으면 번역어 자동 제안(AI) 기능을 사용할 수 없습니다. Anthropic Console(https://console.anthropic.com)에서 API 키를 발급받으세요.
             </small>
         </div>
 
@@ -71,12 +71,12 @@
                                             <div style="display: flex; gap: 8px; margin-bottom: 8px;">
                                                 <input type="text" id="newAuthorName" placeholder="작성자 이름 입력" style="flex: 1; padding: 6px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 13px;">
                                             </div>
-                                            <div style="display: flex; gap: 8px;">
-                                                <button type="button" id="saveAuthorBtn" class="btn btn-primary" style="flex: 1; padding: 6px; font-size: 13px;">저장</button>
-                                                <button type="button" id="cancelAuthorBtn" class="btn btn-secondary" style="flex: 1; padding: 6px; font-size: 13px;">취소</button>
+                                            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                                                <button type="button" id="saveAuthorBtn" class="btn btn-primary" style="flex: 1; padding: 6px 12px; font-size: 12px;">저장</button>
+                                                <button type="button" id="cancelAuthorBtn" class="btn btn-secondary" style="flex: 1; padding: 6px 12px; font-size: 12px;">취소</button>
                                             </div>
                                         </div>
-                                        <button type="button" id="addAuthorBtn" class="btn btn-secondary" style="width: 100%; padding: 8px; font-size: 13px;">+ 작성자 추가</button>
+                                        <button type="button" id="addAuthorBtn" class="btn btn-secondary" style="width: 100%; padding: 6px 12px; font-size: 12px; margin-top: 8px;">+ 작성자 추가</button>
                                     </div>
                                 </div>
                             </div>
@@ -122,7 +122,9 @@
     <!-- Firebase SDK v8 (CDN 호환) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="firebase-init.js"></script>
+    <script src="auth.js"></script>
     <script src="netlify-config.js"></script>
     <script>
         // Firebase SDK 로드 후 discussion.js 실행
@@ -146,6 +148,18 @@
             // discussion.js 로드
             const script = document.createElement('script');
             script.src = 'discussion.js';
+            script.onload = function() {
+                // DOMContentLoaded가 이미 발생했을 수 있으므로 직접 초기화
+                if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                    if (typeof DiscussionManager !== 'undefined' && !window.discussionManager) {
+                        window.discussionManager = new DiscussionManager();
+                        // 이벤트 리스너도 설정
+                        if (window.discussionManager.setupEventListeners) {
+                            // 이미 init에서 설정되었을 수 있음
+                        }
+                    }
+                }
+            };
             document.body.appendChild(script);
         })();
     </script>

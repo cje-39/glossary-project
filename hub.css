@@ -16,6 +16,18 @@
     padding: 40px 20px;
     min-height: 100vh;
     background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+    animation: slideIn 0.4s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .hub-header {
@@ -134,4 +146,409 @@
         width: 100%;
         max-width: 100%;
     }
+}
+
+/* ============================================
+   로그인 모달 스타일
+   ============================================ */
+
+.login-modal {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-modal-content {
+    background: white;
+    border-radius: 12px;
+    padding: 40px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: modalFadeIn 0.3s ease-out;
+    position: relative;
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 32px;
+    color: #999;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    padding: 0;
+    transition: all 0.2s;
+    border-radius: 4px;
+}
+
+.modal-close-btn:hover {
+    color: #333;
+    background: #f0f0f0;
+}
+
+.login-modal-content h2 {
+    margin: 0 0 10px 0;
+    font-size: 1.8em;
+    color: #1a1a1a;
+    font-family: 'KraftonFont', 'Pretendard', 'Nanum Gothic', 나눔고딕, sans-serif;
+}
+
+.login-subtitle {
+    margin: 0 0 30px 0;
+    color: #666;
+    font-size: 0.95em;
+}
+
+.login-input-group {
+    margin-bottom: 20px;
+}
+
+.login-input-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #333;
+    font-size: 0.9em;
+    font-weight: 600;
+}
+
+.login-input-group input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1em;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+}
+
+.login-input-group input:focus {
+    outline: none;
+    border-color: #2b68dc;
+}
+
+.login-error {
+    color: #e74c3c;
+    font-size: 0.9em;
+    margin-top: 8px;
+    padding-left: 4px;
+}
+
+.login-remember {
+    margin-bottom: 25px;
+}
+
+.login-remember label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.95em;
+    color: #555;
+}
+
+.login-remember input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    cursor: pointer;
+    accent-color: #2b68dc;
+}
+
+.login-submit-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #2b68dc 0%, #2b68dc 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(13, 74, 31, 0.3);
+}
+
+.login-submit-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2b68dc 0%, #2b68dc 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(13, 74, 31, 0.4);
+}
+
+.login-submit-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.login-submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* 사용자명 표시 */
+.user-display {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    left: auto !important;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: linear-gradient(135deg, #888 0%, #777 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.75em;
+    font-weight: 600;
+    cursor: pointer;
+    z-index: 9999;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s;
+    user-select: none;
+    position: relative;
+    min-width: auto;
+    width: auto;
+    height: auto;
+}
+
+.user-display:hover {
+    background: linear-gradient(135deg, #777 0%, #666 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.user-name {
+    color: white;
+    white-space: nowrap;
+}
+
+.user-profile-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #5B7FFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.user-profile-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* 사용자 드롭다운 메뉴 */
+.user-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    min-width: 150px;
+    overflow: hidden;
+    z-index: 10000;
+}
+
+.user-dropdown-item {
+    padding: 12px 16px;
+    color: #333;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 0.9em;
+}
+
+.user-dropdown-item:hover {
+    background-color: #f5f5f5;
+}
+
+.user-dropdown-item:first-child {
+    border-bottom: 1px solid #e0e0e0;
+}
+
+/* 비밀번호 재설정 링크 */
+.login-forgot-password {
+    text-align: center;
+    margin-top: 15px;
+}
+
+.login-forgot-password a {
+    color: #2b68dc;
+    text-decoration: none;
+    font-size: 0.9em;
+    transition: color 0.3s;
+}
+
+.login-forgot-password a:hover {
+    color: #2b68dc;
+    text-decoration: underline;
+}
+
+/* 성공 메시지 */
+.login-success {
+    color: #2b68dc;
+    font-size: 0.9em;
+    margin-top: 8px;
+    padding-left: 4px;
+}
+
+/* 폼 액션 버튼 그룹 */
+.login-form-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.login-form-actions .login-submit-btn {
+    flex: 1;
+}
+
+.login-cancel-btn {
+    padding: 14px 20px;
+    background: #e0e0e0;
+    color: #333;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.login-cancel-btn:hover {
+    background: #d0d0d0;
+}
+
+/* ============================================
+   비밀번호 인증 모달 스타일
+   ============================================ */
+
+.password-modal {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+
+.password-modal-content {
+    background: white;
+    border-radius: 12px;
+    padding: 40px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.password-modal-content h2 {
+    margin: 0 0 10px 0;
+    font-size: 1.8em;
+    color: #1a1a1a;
+    font-family: 'KraftonFont', 'Pretendard', 'Nanum Gothic', 나눔고딕, sans-serif;
+}
+
+.password-subtitle {
+    margin: 0 0 30px 0;
+    color: #666;
+    font-size: 0.95em;
+}
+
+.password-input-group {
+    margin-bottom: 20px;
+}
+
+#passwordInput {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1em;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+}
+
+#passwordInput:focus {
+    outline: none;
+    border-color: #2b68dc;
+}
+
+.password-error {
+    color: #e74c3c;
+    font-size: 0.9em;
+    margin-top: 8px;
+    padding-left: 4px;
+}
+
+.password-remember {
+    margin-bottom: 25px;
+}
+
+.password-remember label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.95em;
+    color: #555;
+}
+
+.password-remember input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    cursor: pointer;
+    accent-color: #2b68dc;
+}
+
+.password-submit-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #2b68dc 0%, #2b68dc 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(13, 74, 31, 0.3);
+}
+
+.password-submit-btn:hover {
+    background: linear-gradient(135deg, #2b68dc 0%, #2b68dc 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(13, 74, 31, 0.4);
+}
+
+.password-submit-btn:active {
+    transform: translateY(0);
 }

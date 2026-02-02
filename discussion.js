@@ -45,13 +45,25 @@ class DiscussionManager {
                     // 실시간 동기화 설정
                     FirestoreHelper.onSnapshot('discussion', 'posts', (data) => {
                         if (data && data.posts) {
+                            // 로컬 posts를 맵으로 변환하여 meaning 필드 보존
+                            const localPostsMap = new Map();
+                            this.posts.forEach(localPost => {
+                                if (localPost.meaning) {
+                                    localPostsMap.set(localPost.id, localPost.meaning);
+                                }
+                            });
+                            
                             this.posts = data.posts.map(post => {
+                                // 로컬에 meaning이 있으면 보존
+                                const localMeaning = localPostsMap.get(post.id);
+                                
                                 if (post.term && !post.kr) {
                                     return {
                                         ...post,
                                         kr: post.term,
                                         jp: post.term,
-                                        category: post.category || ''
+                                        category: post.category || '',
+                                        meaning: localMeaning || post.meaning || ''
                                     };
                                 }
                                 return {
@@ -59,7 +71,7 @@ class DiscussionManager {
                                     kr: post.kr || '',
                                     jp: post.jp || '',
                                     category: post.category || '',
-                                    meaning: post.meaning || ''
+                                    meaning: localMeaning || post.meaning || ''
                                 };
                             });
                             localStorage.setItem('discussionPosts', JSON.stringify(this.posts));
@@ -225,10 +237,10 @@ class DiscussionManager {
             
             if (statusText) {
                 if (apiKey && apiKey.trim()) {
-                    statusText.textContent = '✅ API 키가 저장되어 있습니다. 의미(AI) 기능을 사용할 수 있습니다.';
+                    statusText.textContent = '✅ API 키가 저장되어 있습니다. 번역어 자동 제안(AI) 기능을 사용할 수 있습니다.';
                     statusText.style.color = '#27ae60';
                 } else {
-                    statusText.textContent = '⚠️ API 키가 없습니다. 의미(AI) 기능을 사용할 수 없습니다.';
+                    statusText.textContent = '⚠️ API 키가 없습니다. 번역어 자동 제안(AI) 기능을 사용할 수 없습니다.';
                     statusText.style.color = '#f39c12';
                 }
             }
@@ -240,7 +252,7 @@ class DiscussionManager {
                 if (apiKey) {
                     localStorage.setItem('claude_api_key', apiKey);
                     updateApiKeyStatus();
-                    alert('✅ API 키가 저장되었습니다. 이제 의미(AI) 기능을 사용할 수 있습니다.');
+                    alert('✅ API 키가 저장되었습니다. 이제 번역어 자동 제안(AI) 기능을 사용할 수 있습니다.');
                 } else {
                     alert('API 키를 입력해주세요.');
                 }
@@ -275,10 +287,10 @@ class DiscussionManager {
         // 새 게시물 버튼 (이벤트 위임 사용)
         document.addEventListener('click', (e) => {
             if (e.target.id === 'newPostBtn') {
-                document.getElementById('postModal').classList.add('show');
                 document.getElementById('postForm').reset();
                 document.getElementById('postForm').removeAttribute('data-edit-id');
                 document.getElementById('modalTitle').textContent = '토론 등록하기';
+                document.getElementById('postModal').classList.add('show');
                 const hiddenInput = document.getElementById('postAuthor');
                 if (hiddenInput) hiddenInput.value = '';
                 this.updateAuthorDropdown();
@@ -483,7 +495,32 @@ class DiscussionManager {
         this.renderPosts();
     }
 
-    // 게시물 추가
+    // 게시물 수정
+    editPost(id) {
+        const post = this.posts.find(p => p.id === id);
+        if (!post) return;
+
+        // 폼에 기존 데이터 채우기
+        document.getElementById('postAuthor').value = post.author || '';
+        document.getElementById('postCategory').value = post.category || '';
+        document.getElementById('postDirection').value = post.direction || '';
+        document.getElementById('postKR').value = post.kr || '';
+        document.getElementById('postJP').value = post.jp || '';
+        document.getElementById('postContent').value = post.content || '';
+        document.getElementById('postNote').value = post.note || '';
+
+        // 수정 모드로 설정
+        document.getElementById('postForm').setAttribute('data-edit-id', id);
+        document.getElementById('modalTitle').textContent = '토론 수정하기';
+        
+        // 작성자 드롭다운 업데이트
+        this.updateAuthorDropdown();
+        
+        // 팝업 열기
+        document.getElementById('postModal').classList.add('show');
+    }
+
+    // 게시물 추가 또는 수정
     addPost() {
         const author = document.getElementById('postAuthor').value;
         const category = document.getElementById('postCategory').value;
@@ -504,36 +541,67 @@ class DiscussionManager {
             return;
         }
 
-        const newId = this.posts.length > 0 ? Math.max(...this.posts.map(p => p.id)) + 1 : 1;
-        const newPost = {
-            id: newId,
-            author,
-            category: category || '',
-            direction,
-            kr,
-            jp,
-            content,
-            note: note || '',
-            meaning: '', // AI 생성 의미
-            resolved: false,
-            comments: [],
-            createdAt: new Date().toISOString()
-        };
+        // 수정 모드인지 확인
+        const editId = document.getElementById('postForm').getAttribute('data-edit-id');
+        
+        if (editId) {
+            // 수정 모드
+            const post = this.posts.find(p => p.id === parseInt(editId));
+            if (post) {
+                post.author = author;
+                post.category = category || '';
+                post.direction = direction;
+                post.kr = kr;
+                post.jp = jp;
+                post.content = content;
+                post.note = note || '';
+                // meaning은 유지
+            }
+        } else {
+            // 추가 모드
+            const newId = this.posts.length > 0 ? Math.max(...this.posts.map(p => p.id)) + 1 : 1;
+            const newPost = {
+                id: newId,
+                author,
+                category: category || '',
+                direction,
+                kr,
+                jp,
+                content,
+                note: note || '',
+                meaning: '', // AI 생성 의미
+                resolved: false,
+                comments: [],
+                createdAt: new Date().toISOString()
+            };
 
-        this.posts.push(newPost);
+            this.posts.push(newPost);
+            
+            // 자동으로 번역어 자동 제안(AI) 생성 (조용히, alert 없이)
+            this.generateMeaning(newId, true);
+        }
+
         this.saveData();
         this.renderPosts();
         document.getElementById('postModal').classList.remove('show');
         document.getElementById('postForm').reset();
-        
-        // 자동으로 AI 의미 생성
-        this.generateMeaning(newId);
+        document.getElementById('postForm').removeAttribute('data-edit-id');
     }
 
     // 게시물 삭제
     deletePost(id) {
         if (confirm('정말 이 게시물을 삭제하시겠습니까?')) {
             this.posts = this.posts.filter(p => p.id !== id);
+            this.saveData();
+            this.renderPosts();
+        }
+    }
+
+    // 번역어 자동 제안(AI) 삭제
+    deleteMeaning(postId) {
+        const post = this.posts.find(p => p.id === postId);
+        if (post) {
+            post.meaning = '';
             this.saveData();
             this.renderPosts();
         }
@@ -553,6 +621,9 @@ class DiscussionManager {
     renderPosts() {
         const container = document.getElementById('postsContainer');
         if (!container) return;
+
+        // 디버깅: this.posts 배열의 meaning 확인
+        console.log('[DEBUG] renderPosts - this.posts 배열:', this.posts.map(p => ({ id: p.id, meaning: p.meaning ? p.meaning.substring(0, 50) + '...' : '(empty)' })));
 
         const activePosts = this.posts.filter(p => !p.resolved);
         const resolvedPosts = this.posts.filter(p => p.resolved);
@@ -574,7 +645,7 @@ class DiscussionManager {
             html += '<th>JP</th>';
             html += '<th>의견</th>';
             html += '<th>비고/예시문</th>';
-            html += '<th>의미(AI)</th>';
+            html += '<th>번역어 자동 제안(AI)</th>';
             html += '<th></th>';
             html += '</tr></thead>';
             html += '<tbody>';
@@ -599,7 +670,7 @@ class DiscussionManager {
         // 해결 섹션
         if (resolvedPosts.length > 0) {
             html += '<div class="posts-section">';
-            html += '<h3 class="section-title">해결!</h3>';
+            html += '<h3 class="section-title resolved-title">해결!</h3>';
             html += '<div class="posts-table-wrapper">';
             html += '<table class="posts-table">';
             html += '<thead><tr>';
@@ -611,7 +682,7 @@ class DiscussionManager {
             html += '<th>JP</th>';
             html += '<th>의견</th>';
             html += '<th>비고/예시문</th>';
-            html += '<th>의미(AI)</th>';
+            html += '<th>번역어 자동 제안(AI)</th>';
             html += '<th></th>';
             html += '</tr></thead>';
             html += '<tbody>';
@@ -622,11 +693,24 @@ class DiscussionManager {
             html += '</div>';
         }
 
+        console.log('[DEBUG] renderPosts - container.innerHTML 설정 전');
+        console.log('[DEBUG] renderPosts - html 길이:', html ? html.length : 0);
         container.innerHTML = html;
+        console.log('[DEBUG] renderPosts - container.innerHTML 설정 후');
+        
+        // 의미가 제대로 렌더링되었는지 확인
+        const meaningCells = document.querySelectorAll('.meaning-content');
+        console.log('[DEBUG] renderPosts - 의미 셀 개수:', meaningCells.length);
+        meaningCells.forEach(cell => {
+            const postId = cell.getAttribute('data-post-id');
+            const meaning = cell.textContent;
+            console.log(`[DEBUG] renderPosts - postId: ${postId}, meaning: ${meaning ? meaning.substring(0, 50) + '...' : '(empty)'}`);
+        });
     }
 
     // 개별 게시물 렌더링 (테이블 행)
     renderPost(post) {
+        console.log(`[DEBUG] renderPost - postId: ${post.id}, post.meaning:`, post.meaning ? post.meaning.substring(0, 50) + '...' : '(empty)');
         const commentCount = post.comments ? post.comments.length : 0;
         const commentsHtml = post.comments && post.comments.length > 0 ? post.comments.map(comment => {
             const commentDate = new Date(comment.createdAt);
@@ -644,8 +728,8 @@ class DiscussionManager {
                             <span class="comment-date">${commentDateStr}</span>
                         </div>
                         <div class="comment-header-actions">
-                            <button class="btn-edit-comment" onclick="discussionManager.editComment(${post.id}, ${comment.id})" title="수정">✎</button>
-                            <button class="btn-delete-comment" onclick="discussionManager.deleteComment(${post.id}, ${comment.id})" title="삭제">-</button>
+                            <button class="btn-edit-comment" onclick="window.discussionManager && window.discussionManager.editComment(${post.id}, ${comment.id})" title="수정">✎</button>
+                            <button class="btn-delete-comment" onclick="window.discussionManager && window.discussionManager.deleteComment(${post.id}, ${comment.id})" title="삭제">-</button>
                         </div>
                     </div>
                     <div class="comment-content">${this.escapeHtml(comment.content).replace(/\n/g, '<br>')}</div>
@@ -659,38 +743,38 @@ class DiscussionManager {
             `;
         }).join('') : '';
 
-        const commentCountBadge = `<span class="comment-count-badge ${commentCount > 0 ? 'has-comments' : ''}" data-post-id="${post.id}" onclick="discussionManager.toggleCommentsList(${post.id}, event)">💬 ${commentCount}</span>`;
+        const commentCountBadge = `<span class="comment-count-badge ${commentCount > 0 ? 'has-comments' : ''}" data-post-id="${post.id}" onclick="window.discussionManager && window.discussionManager.toggleCommentsList(${post.id}, event)">💬 ${commentCount}</span>`;
 
         // 작성자 드롭다운
         const authorOptions = this.authors.map(author =>
             `<option value="${this.escapeHtml(author)}" ${post.author === author ? 'selected' : ''}>${this.escapeHtml(author)}</option>`
         ).join('');
-        const authorSelect = `<select class="cell-dropdown" data-field="author" data-post-id="${post.id}" onchange="discussionManager.updateCellValue(${post.id}, 'author', this.value)"><option value="">선택</option>${authorOptions}</select>`;
+        const authorSelect = `<select class="cell-dropdown" data-field="author" data-post-id="${post.id}" onchange="window.discussionManager && window.discussionManager.updateCellValue(${post.id}, 'author', this.value)"><option value="">선택</option>${authorOptions}</select>`;
 
         // 카테고리 드롭다운 (입력 가능)
         const categoryOptions = this.categories.map(cat =>
             `<option value="${this.escapeHtml(cat)}" ${post.category === cat ? 'selected' : ''}>${this.escapeHtml(cat)}</option>`
         ).join('');
-        const categorySelect = `<select class="cell-dropdown cell-dropdown-editable" data-field="category" data-post-id="${post.id}" onchange="discussionManager.handleCategoryChange(${post.id}, this.value, this)"><option value="">선택</option>${categoryOptions}<option value="__NEW__">+ 새 카테고리</option></select><input type="text" class="cell-input-new" data-field="category" data-post-id="${post.id}" placeholder="새 카테고리 입력 후 Enter" style="display: none;" onkeypress="if(event.key==='Enter') { discussionManager.addNewCategory(${post.id}, this.value, this); }" onblur="this.style.display='none';">`;
+        const categorySelect = `<select class="cell-dropdown cell-dropdown-editable" data-field="category" data-post-id="${post.id}" onchange="window.discussionManager && window.discussionManager.handleCategoryChange(${post.id}, this.value, this)"><option value="">선택</option>${categoryOptions}<option value="__NEW__">+ 새 카테고리</option></select><input type="text" class="cell-input-new" data-field="category" data-post-id="${post.id}" placeholder="새 카테고리 입력 후 Enter" style="display: none;" onkeypress="if(event.key==='Enter') { window.discussionManager && window.discussionManager.addNewCategory(${post.id}, this.value, this); }" onblur="this.style.display='none';">`;
 
         // 언어방향 드롭다운
-        const directionSelect = `<select class="cell-dropdown" data-field="direction" data-post-id="${post.id}" onchange="discussionManager.updateCellValue(${post.id}, 'direction', this.value)"><option value="">선택</option><option value="한일" ${post.direction === '한일' ? 'selected' : ''}>한일</option><option value="일한" ${post.direction === '일한' ? 'selected' : ''}>일한</option></select>`;
+        const directionSelect = `<select class="cell-dropdown" data-field="direction" data-post-id="${post.id}" onchange="window.discussionManager && window.discussionManager.updateCellValue(${post.id}, 'direction', this.value)"><option value="">선택</option><option value="한일" ${post.direction === '한일' ? 'selected' : ''}>한일</option><option value="일한" ${post.direction === '일한' ? 'selected' : ''}>일한</option></select>`;
 
         return `
             <tr data-post-id="${post.id}" data-resolved="${post.resolved}">
                 <td class="row-resolve">
                     <label class="resolve-checkbox-label">
-                        <input type="checkbox" class="resolve-checkbox" ${post.resolved ? 'checked' : ''} onchange="discussionManager.toggleResolved(${post.id})">
+                        <input type="checkbox" class="resolve-checkbox" ${post.resolved ? 'checked' : ''} onchange="window.discussionManager && window.discussionManager.toggleResolved(${post.id})">
                     </label>
                 </td>
                 <td class="row-author">${authorSelect}</td>
                 <td class="row-category">${categorySelect}</td>
                 <td class="row-direction">${directionSelect}</td>
-                <td class="row-kr editable-cell" data-field="kr" data-post-id="${post.id}" contenteditable="true">${this.escapeHtml(post.kr || '')}</td>
-                <td class="row-jp editable-cell" data-field="jp" data-post-id="${post.id}" contenteditable="true">${this.escapeHtml(post.jp || '')}</td>
+                <td class="row-kr">${this.escapeHtml(post.kr || '')}</td>
+                <td class="row-jp">${this.escapeHtml(post.jp || '')}</td>
                 <td class="row-opinion opinion-cell-wrapper">
                     <div class="opinion-cell-content">
-                        <div class="editable-cell" data-field="content" data-post-id="${post.id}" contenteditable="true">${this.escapeHtml((post.content || '').trim())}</div>
+                        <div>${this.escapeHtml((post.content || '').trim())}</div>
                         ${commentCountBadge}
                     </div>
                     <div class="comments-container-popup" data-post-id="${post.id}" style="display: none;">
@@ -718,15 +802,17 @@ class DiscussionManager {
                     </div>
                 </td>
                 <td class="row-note">
-                    <div class="editable-cell editable-note" data-field="note" data-post-id="${post.id}" contenteditable="true">${post.note ? this.escapeHtml(post.note) : ''}</div>
+                    <div class="editable-note">${post.note ? this.escapeHtml(post.note) : ''}</div>
                 </td>
                 <td class="row-meaning">
                     <div class="meaning-cell-wrapper">
                         <div class="meaning-content" data-post-id="${post.id}" style="white-space: pre-line;">${post.meaning ? this.escapeHtml(post.meaning) : ''}</div>
+                        <button class="btn-generate-meaning" onclick="window.discussionManager && window.discussionManager.generateMeaning(${post.id}, false)" title="번역어 자동 제안(AI)">💡</button>
                     </div>
                 </td>
                 <td class="row-actions">
-                    <button class="btn-delete-post" onclick="discussionManager.deletePost(${post.id})" title="삭제">×</button>
+                    <button class="btn-edit-post" onclick="window.discussionManager && window.discussionManager.editPost(${post.id})" title="수정">-</button>
+                    <button class="btn-delete-post" onclick="window.discussionManager && window.discussionManager.deletePost(${post.id})" title="삭제">×</button>
                 </td>
             </tr>
         `;
@@ -768,25 +854,9 @@ class DiscussionManager {
     }
 
     // 편집 가능한 셀 이벤트 리스너 연결
+    // 셀 클릭 편집 기능 제거됨 - 수정은 팝업을 통해서만 가능
     attachEditableCellListeners() {
-        document.querySelectorAll('.editable-cell').forEach(cell => {
-            cell.addEventListener('focus', function() {
-                this.style.backgroundColor = '#fff9e6';
-            });
-            cell.addEventListener('blur', function() {
-                this.style.backgroundColor = '';
-                const postId = parseInt(this.dataset.postId);
-                const field = this.dataset.field;
-                const value = this.textContent.trim();
-                discussionManager.updateCellValue(postId, field, value);
-            });
-            cell.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    this.blur();
-                }
-            });
-        });
+        // 기능 제거됨
     }
 
     // 의견 목록 토글
@@ -956,10 +1026,10 @@ class DiscussionManager {
         const deleteBtn = commentItem.querySelector('.btn-delete-comment');
         if (editBtn && deleteBtn) {
             editBtn.outerHTML = `
-                <button class="btn-save-comment" onclick="discussionManager.saveCommentEdit(${postId}, ${commentId})" title="저장">✓</button>
+                <button class="btn-save-comment" onclick="window.discussionManager && window.discussionManager.saveCommentEdit(${postId}, ${commentId})" title="저장">✓</button>
             `;
             deleteBtn.outerHTML = `
-                <button class="btn-cancel-comment-edit" onclick="discussionManager.cancelCommentEdit(${postId}, ${commentId}, '${this.escapeHtml(currentContent)}', '${this.escapeHtml(currentAuthor)}')" title="취소">×</button>
+                <button class="btn-cancel-comment-edit" onclick="window.discussionManager && window.discussionManager.cancelCommentEdit(${postId}, ${commentId}, '${this.escapeHtml(currentContent)}', '${this.escapeHtml(currentAuthor)}')" title="취소">×</button>
             `;
         }
     }
@@ -1048,8 +1118,39 @@ class DiscussionManager {
         this.renderPosts();
     }
 
+    // 번역어 제안 파싱 (불렛포인트 리스트로 변환)
+    parseTranslationSuggestions(text) {
+        console.log('[DEBUG] parseTranslationSuggestions 입력:', text);
+        const lines = text.split('\n');
+        const suggestions = [];
+        
+        for (let line of lines) {
+            const trimmedLine = line.trim();
+            if (!trimmedLine) continue;
+            
+            // 불렛포인트 제거 (•, -, ・ 등)
+            let cleaned = trimmedLine.replace(/^[•\-・]\s*/, '').trim();
+            // 마크다운 볼드 제거
+            cleaned = cleaned.replace(/\*\*/g, '').trim();
+            // 숫자로 시작하는 경우 제거 (1. 2. 등)
+            cleaned = cleaned.replace(/^\d+[\.\)]\s*/, '').trim();
+            // 괄호 제거
+            cleaned = cleaned.replace(/^[\(\)\[\]]\s*/, '').trim();
+            
+            if (cleaned) {
+                suggestions.push(cleaned);
+            }
+        }
+        
+        // 2~3개만 선택 (최대 3개)
+        const result = suggestions.slice(0, 3).map(s => '• ' + s).join('\n');
+        console.log('[DEBUG] parseTranslationSuggestions 최종 반환값:', result);
+        return result || text; // 파싱 실패 시 원본 반환
+    }
+
     // 의미 파싱 (한국어와 일본어를 엔터로 구분, 라벨 제거, 불렛포인트 처리)
     parseMeaning(text) {
+        console.log('[DEBUG] parseMeaning 입력:', text);
         // 줄 단위로 파싱하여 한국어와 일본어 의미를 완전히 추출
         const lines = text.split('\n');
         let krMeaning = '';
@@ -1059,71 +1160,121 @@ class DiscussionManager {
         
         for (let line of lines) {
             const trimmedLine = line.trim();
+            console.log('[DEBUG] 파싱 중인 줄:', trimmedLine, '현재 섹션:', currentSection);
             
-            // 한국어 라벨 확인
-            if (/^[•\-]?\s*한국어[:\s]/i.test(trimmedLine)) {
+            // 한국어 라벨 확인 (마크다운 볼드 포함, 라벨만 있는 경우도 처리)
+            // • 한국어: 또는 한국어: 패턴 모두 인식
+            if (/^[•\-・]?\s*\*\*?\s*한국어[:\s]/i.test(trimmedLine) || /^[•\-・]?\s*한국어[:\s]/i.test(trimmedLine) || /한국어[:\s]/i.test(trimmedLine)) {
                 // 이전 섹션 저장
                 if (currentSection === 'kr' && currentContent.length > 0) {
                     krMeaning = currentContent.join(' ').trim();
                 }
                 currentSection = 'kr';
                 currentContent = [];
-                // 라벨 제거하고 내용 추출
-                let content = trimmedLine.replace(/^[•\-]?\s*한국어[:\s]*/i, '').trim();
-                if (content) currentContent.push(content);
+                // 라벨 제거하고 내용 추출 (마크다운 볼드 포함)
+                let content = trimmedLine.replace(/^[•\-・]?\s*\*\*?\s*한국어[:\s]*\*\*?\s*/i, '').trim(); // **한국어:** 패턴
+                content = content.replace(/^[•\-・]?\s*한국어[:\s]*/i, '').trim(); // 한국어: 패턴
+                // 라벨이 줄 중간에 있어도 인식
+                if (content === trimmedLine && /한국어[:\s]/i.test(trimmedLine)) {
+                    content = trimmedLine.replace(/.*?한국어[:\s]*/i, '').trim();
+                }
+                if (content) {
+                    currentContent.push(content);
+                    console.log('[DEBUG] 한국어 내용 추가:', content);
+                }
             }
-            // 일본어 라벨 확인
-            else if (/^[•\-]?\s*(?:일본어|日本語)[:\s]/i.test(trimmedLine)) {
+            // 일본어 라벨 확인 (마크다운 볼드 포함, 日本語: 패턴도 처리)
+            // • 日本語: 또는 日本語: 패턴 모두 인식
+            else if (/^[•\-・]?\s*\*\*?\s*(?:일본어|日本語)[:\s]/i.test(trimmedLine) || /^[•\-・]?\s*(?:일본어|日本語)[:\s]/i.test(trimmedLine) || /(?:일본어|日本語)[:\s]/i.test(trimmedLine)) {
                 // 이전 섹션 저장
                 if (currentSection === 'kr' && currentContent.length > 0) {
                     krMeaning = currentContent.join(' ').trim();
+                    console.log('[DEBUG] 한국어 의미 저장:', krMeaning);
                 } else if (currentSection === 'jp' && currentContent.length > 0) {
                     jpMeaning = currentContent.join(' ').trim();
+                    console.log('[DEBUG] 일본어 의미 저장:', jpMeaning);
                 }
                 currentSection = 'jp';
                 currentContent = [];
-                // 라벨 제거하고 내용 추출
-                let content = trimmedLine.replace(/^[•\-]?\s*(?:일본어|日本語)[:\s]*/i, '').trim();
-                if (content) currentContent.push(content);
+                // 라벨 제거하고 내용 추출 (마크다운 볼드 포함)
+                let content = trimmedLine.replace(/^[•\-・]?\s*\*\*?\s*(?:일본어|日本語)[:\s]*\*\*?\s*/i, '').trim(); // **日本語:** 패턴
+                content = content.replace(/^[•\-・]?\s*(?:일본어|日本語)[:\s]*/i, '').trim(); // 日本語: 패턴
+                // 라벨이 줄 중간에 있어도 인식
+                if (content === trimmedLine && /(?:일본어|日本語)[:\s]/i.test(trimmedLine)) {
+                    content = trimmedLine.replace(/.*?(?:일본어|日本語)[:\s]*/i, '').trim();
+                }
+                if (content) {
+                    currentContent.push(content);
+                    console.log('[DEBUG] 일본어 내용 추가:', content);
+                }
             }
-            // 현재 섹션에 내용 추가
+            // 현재 섹션에 내용 추가 (해시태그 제거)
             else if (currentSection && trimmedLine) {
-                currentContent.push(trimmedLine);
+                // 해시태그 제거
+                let cleanLine = trimmedLine.replace(/#[^\s]*/g, '').trim();
+                // 불필요한 불렛포인트나 구분자 제거
+                cleanLine = cleanLine.replace(/^[•・\-]\s*/, '').trim();
+                if (cleanLine) {
+                    currentContent.push(cleanLine);
+                    console.log('[DEBUG] 현재 섹션에 내용 추가:', currentSection, cleanLine);
+                }
             }
         }
         
         // 마지막 섹션 저장
         if (currentSection === 'kr' && currentContent.length > 0) {
             krMeaning = currentContent.join(' ').trim();
+            console.log('[DEBUG] 마지막 한국어 의미 저장:', krMeaning);
         } else if (currentSection === 'jp' && currentContent.length > 0) {
             jpMeaning = currentContent.join(' ').trim();
+            console.log('[DEBUG] 마지막 일본어 의미 저장:', jpMeaning);
         }
         
         // 정리 작업
         if (krMeaning) {
             // 마크다운 볼드(**텍스트**) 제거
             krMeaning = krMeaning.replace(/\*\*/g, '').trim();
+            // 해시태그 제거
+            krMeaning = krMeaning.replace(/#[^\s]*/g, '').trim();
             // 콜론 제거 (라벨 뒤의 콜론은 이미 제거되었지만, 의미 안에 있는 콜론도 제거)
             krMeaning = krMeaning.replace(/^:\s*/, '').trim();
+            // 라벨 제거
+            krMeaning = krMeaning.replace(/^(?:한국어|日本語|일본어)[:\s]+/i, '').trim();
+            // 불필요한 불렛포인트나 구분자 제거
+            krMeaning = krMeaning.replace(/^[•・\-]\s*/, '').trim();
         }
         
         if (jpMeaning) {
             // 마크다운 볼드(**텍스트**) 제거
             jpMeaning = jpMeaning.replace(/\*\*/g, '').trim();
+            // 해시태그 제거
+            jpMeaning = jpMeaning.replace(/#[^\s]*/g, '').trim();
             // 콜론 제거
             jpMeaning = jpMeaning.replace(/^:\s*/, '').trim();
+            // 라벨 제거
+            jpMeaning = jpMeaning.replace(/^(?:한국어|日本語|일본어)[:\s]+/i, '').trim();
+            // 불필요한 불렛포인트나 구분자 제거
+            jpMeaning = jpMeaning.replace(/^[•・\-]\s*/, '').trim();
         }
+        
+        console.log('[DEBUG] 정리 후 krMeaning:', krMeaning, 'jpMeaning:', jpMeaning);
         
         // 파싱이 실패하면 원본 텍스트에서 라벨만 제거
         if (!krMeaning && !jpMeaning) {
+            console.log('[DEBUG] 파싱 실패 - 원본 텍스트에서 라벨만 제거:', text);
             let cleaned = text;
-            // 라벨 제거
-            cleaned = cleaned.replace(/^[•\-]\s*한국어[:\s]*/i, '').trim();
-            cleaned = cleaned.replace(/[•\-]\s*(?:일본어|日本語)[:\s]*/i, '').trim();
+            // 라벨 제거 (더 포괄적인 패턴)
+            cleaned = cleaned.replace(/^[•\-・]?\s*\*\*?\s*한국어[:\s]*\*\*?\s*/gi, '').trim();
+            cleaned = cleaned.replace(/^[•\-・]?\s*한국어[:\s]*/gi, '').trim();
+            cleaned = cleaned.replace(/[•\-・]?\s*\*\*?\s*(?:일본어|日本語)[:\s]*\*\*?\s*/gi, '').trim();
+            cleaned = cleaned.replace(/[•\-・]?\s*(?:일본어|日本語)[:\s]*/gi, '').trim();
             // 마크다운 볼드(**텍스트**) 제거
             cleaned = cleaned.replace(/\*\*/g, '').trim();
             // 콜론 제거
             cleaned = cleaned.replace(/:\s*/g, ' ').trim();
+            // 빈 줄 제거
+            cleaned = cleaned.replace(/\n\s*\n/g, '\n').trim();
+            console.log('[DEBUG] 파싱 실패 후 정리된 텍스트:', cleaned);
             return cleaned;
         }
         
@@ -1140,28 +1291,50 @@ class DiscussionManager {
             result.push('• ' + jpMeaning);
         }
         
-        return result.join('\n');
+        const finalResult = result.join('\n');
+        console.log('[DEBUG] parseMeaning 최종 반환값:', finalResult);
+        return finalResult;
     }
 
     // AI로 의미 생성
-    async generateMeaning(postId) {
+    async generateMeaning(postId, silent = false) {
         const post = this.posts.find(p => p.id === postId);
         if (!post) return;
 
         const kr = post.kr || '';
         const jp = post.jp || '';
         const direction = post.direction || '';
+        const note = post.note || ''; // 비고/예시문
 
-        // 한국어 또는 일본어 중 하나는 필수
-        if (!kr && !jp) {
-            alert('한국어 또는 일본어 중 하나는 입력되어 있어야 합니다.');
+        // 언어방향 확인
+        if (!direction || (direction !== '한일' && direction !== '일한')) {
+            if (!silent) alert('언어 방향을 선택해주세요.');
             return;
+        }
+
+        // 언어방향에 따라 소스 텍스트 확인
+        let sourceText = '';
+        let targetLanguage = '';
+        if (direction === '한일') {
+            if (!kr) {
+                if (!silent) alert('한일 번역의 경우 KR 셀에 한국어 용어를 입력해주세요.');
+                return;
+            }
+            sourceText = kr;
+            targetLanguage = '일본어';
+        } else { // 일한
+            if (!jp) {
+                if (!silent) alert('일한 번역의 경우 JP 셀에 일본어 용어를 입력해주세요.');
+                return;
+            }
+            sourceText = jp;
+            targetLanguage = '한국어';
         }
 
         // API 키 확인
         const apiKey = localStorage.getItem('claude_api_key');
         if (!apiKey) {
-            alert('Claude API 키가 필요합니다. 코퍼스 페이지에서 API 키를 설정해주세요.');
+            if (!silent) alert('Claude API 키가 필요합니다. 코퍼스 페이지에서 API 키를 설정해주세요.');
             return;
         }
 
@@ -1173,51 +1346,52 @@ class DiscussionManager {
         }
 
         try {
-            // 한국어와 일본어 중 하나만 입력되어도 둘 다 생성
+            // 번역어 자동 제안(AI) 프롬프트
             let prompt = '';
-            if (kr && jp) {
-                // 둘 다 입력된 경우
-                prompt = `다음은 ${direction === '한일' ? '한국어에서 일본어로' : '일본어에서 한국어로'} 번역된 용어입니다.
+            
+            if (note && note.trim()) {
+                // 비고/예시문이 있는 경우: 문맥을 강조하여 프롬프트 작성
+                prompt = `${direction === '한일' ? '한국어' : '일본어'} 용어: ${sourceText}
 
-한국어: ${kr}
-일본어: ${jp}
+비고/예시문:
+${note}
 
-이 용어의 사전적 정의를 각 언어로 한 문장씩 짧고 명확하게 작성해주세요. 외부 사전을 참조하지 말고 일반적인 사전적 의미만 알려주세요.
-
-형식:
-• 한국어: [한 문장으로 된 사전적 정의]
-• 일본어: [한 문장으로 된 사전적 정의]`;
-            } else if (kr) {
-                // 한국어만 입력된 경우 - 둘 다 생성
-                prompt = `다음은 한국어 용어입니다.
-
-한국어: ${kr}
-
-이 용어의 사전적 정의를 한국어와 일본어로 각각 한 문장씩 짧고 명확하게 작성해주세요. 외부 사전을 참조하지 말고 일반적인 사전적 의미만 알려주세요.
+위 예시문의 문맥을 고려하여 "${sourceText}"를 ${targetLanguage}로 번역할 때 사용할 수 있는 번역어를 2~3개 제안해주세요.
 
 형식:
-• 한국어: [한 문장으로 된 사전적 정의]
-• 일본어: [한 문장으로 된 사전적 정의]`;
-            } else if (jp) {
-                // 일본어만 입력된 경우 - 둘 다 생성
-                prompt = `다음은 일본어 용어입니다.
+• [번역어 1]
+• [번역어 2]
+• [번역어 3] (선택사항)
 
-일본어: ${jp}
+각 번역어는 한 줄씩 불렛포인트로 작성해주세요.`;
+            } else {
+                // 비고/예시문이 없는 경우: 일반적인 번역어 제안
+                prompt = `다음은 ${direction === '한일' ? '한국어' : '일본어'} 용어입니다.
 
-이 용어의 사전적 정의를 한국어와 일본어로 각각 한 문장씩 짧고 명확하게 작성해주세요. 외부 사전을 참조하지 말고 일반적인 사전적 의미만 알려주세요.
+${direction === '한일' ? '한국어' : '일본어'}: ${sourceText}
+
+이 용어를 ${targetLanguage}로 번역할 때 사용할 수 있는 번역어를 2~3개 제안해주세요.
 
 형식:
-• 한국어: [한 문장으로 된 사전적 정의]
-• 일본어: [한 문장으로 된 사전적 정의]`;
+• [번역어 1]
+• [번역어 2]
+• [번역어 3] (선택사항)
+
+각 번역어는 한 줄씩 불렛포인트로 작성해주세요.`;
             }
 
             // Netlify Functions 또는 로컬 서버를 통해 API 호출
-            const apiUrl = window.getClaudeApiUrl ? window.getClaudeApiUrl() : '/api/claude';
+            let apiUrl = window.getClaudeApiUrl ? window.getClaudeApiUrl() : '/api/claude';
+            
+            // apiUrl이 상대 경로인 경우에만 origin 추가
+            if (apiUrl.startsWith('/')) {
+                apiUrl = window.location.origin + apiUrl;
+            }
             
             console.log('[DEBUG] API 호출 시도');
             console.log('[DEBUG] 현재 URL:', window.location.href);
             console.log('[DEBUG] API 키 존재:', !!apiKey);
-            console.log('[DEBUG] 요청 URL:', window.location.origin + apiUrl);
+            console.log('[DEBUG] 요청 URL:', apiUrl);
             
             const response = await fetch(apiUrl, {
                 method: 'POST',
@@ -1229,7 +1403,7 @@ class DiscussionManager {
                     model: 'claude-sonnet-4-5-20250929',
                     max_tokens: 200,
                     temperature: 0.3,
-                    system: 'You are a helpful assistant that explains the meaning of Korean-Japanese translation terms concisely.',
+                    system: 'You are a helpful assistant that suggests appropriate translations for Korean-Japanese terms.',
                     messages: [
                         {
                             role: 'user',
@@ -1258,27 +1432,37 @@ class DiscussionManager {
             }
             
             const data = await response.json();
-            console.log('[DEBUG] 응답 데이터 받음');
+            console.log('[DEBUG] 응답 데이터 받음:', JSON.stringify(data, null, 2));
             
+            // API 응답에서 텍스트 추출 (원래 방식으로 복원)
             if (!data.content || !data.content[0] || !data.content[0].text) {
+                console.error('[DEBUG] API 응답 형식 오류:', data);
                 throw new Error('API 응답 형식이 올바르지 않습니다.');
             }
             
-            let meaning = data.content[0].text.trim();
+            let suggestions = data.content[0].text.trim();
+            console.log('[DEBUG] 추출된 번역어 제안 텍스트 (전체):', suggestions);
+            console.log('[DEBUG] 번역어 제안 길이:', suggestions ? suggestions.length : 0);
             
-            if (!meaning) {
-                throw new Error('의미를 생성할 수 없습니다.');
+            if (!suggestions) {
+                throw new Error('번역어를 생성할 수 없습니다.');
             }
             
-            // 한국어와 일본어 의미를 파싱하여 엔터로 구분
-            meaning = this.parseMeaning(meaning);
+            // 번역어 제안을 파싱하여 불렛포인트 리스트로 변환
+            console.log('[DEBUG] parseTranslationSuggestions 호출 전:', suggestions);
+            suggestions = this.parseTranslationSuggestions(suggestions);
+            console.log('[DEBUG] parseTranslationSuggestions 호출 후:', suggestions);
             
             // 데이터 업데이트
-            post.meaning = meaning;
+            console.log('[DEBUG] post.meaning에 저장할 값:', suggestions);
+            post.meaning = suggestions;
+            console.log('[DEBUG] post.meaning 저장 후:', post.meaning);
             this.saveData();
+            console.log('[DEBUG] renderPosts 호출 전');
             this.renderPosts();
+            console.log('[DEBUG] renderPosts 호출 후');
         } catch (error) {
-            console.error('의미 생성 오류:', error);
+            console.error('번역어 제안 생성 오류:', error);
             console.error('오류 상세:', {
                 message: error.message,
                 stack: error.stack,
@@ -1286,19 +1470,23 @@ class DiscussionManager {
             });
             
             if (meaningCell) {
-                meaningCell.textContent = '생성 실패';
+                meaningCell.textContent = '생성 실패: ' + (error.message || '알 수 없는 오류');
                 meaningCell.style.color = '#e74c3c';
             }
             
             // 더 명확한 오류 메시지 표시
-            let errorMsg = error.message || '의미 생성에 실패했습니다.';
+            let errorMsg = error.message || '번역어 제안 생성에 실패했습니다.';
+            console.error('[DEBUG] 최종 오류 메시지:', errorMsg);
             
             // 네트워크 오류인 경우
             if (error.message && error.message.includes('Failed to fetch')) {
                 errorMsg = '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.';
             }
             
-            alert(errorMsg + '\n\n브라우저 콘솔(F12)에서 상세 오류를 확인할 수 있습니다.');
+            // silent 모드가 아닐 때만 alert 표시
+            if (!silent) {
+                alert(errorMsg + '\n\n브라우저 콘솔(F12)에서 상세 오류를 확인할 수 있습니다.');
+            }
         }
     }
 
@@ -1316,6 +1504,8 @@ let discussionManager;
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', () => {
     discussionManager = new DiscussionManager();
+    // 전역에서 접근 가능하도록 window에 할당
+    window.discussionManager = discussionManager;
     
     // 의견 작성 버튼 이벤트 위임
     document.addEventListener('click', (e) => {
@@ -1334,8 +1524,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // 편집 가능한 셀 이벤트 리스너 연결 (렌더링 후)
-    setTimeout(() => {
-        discussionManager.attachEditableCellListeners();
-    }, 100);
+    // 셀 클릭 편집 기능 제거됨 - 수정은 팝업을 통해서만 가능
 });
