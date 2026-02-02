@@ -6,16 +6,30 @@
     function isHubPage() {
         const pathname = window.location.pathname;
         const href = window.location.href;
+        const filename = pathname.split('/').pop() || '';
         
         // index.html이면 hub가 아님
-        if (pathname.includes('index.html') || href.includes('index.html')) {
+        if (filename === 'index.html' || pathname.includes('index.html') || href.includes('index.html')) {
             return false;
         }
         
-        // hub.html 또는 루트 경로('/')만 hub 페이지로 인식
-        return pathname.endsWith(HUB_PAGE) || 
-               pathname.endsWith('/hub.html') ||
-               (pathname === '/' || pathname === '');
+        // hub.html만 hub 페이지로 인식
+        if (filename === HUB_PAGE || pathname.endsWith('/hub.html')) {
+            return true;
+        }
+        
+        // 루트 경로('/')인 경우, index.html이 아닌 경우만 hub로 인식
+        // 하지만 명시적으로 hub.html이 아니면 false
+        if (pathname === '/' || pathname === '') {
+            // index.html이 명시적으로 있으면 false
+            if (href.includes('index.html')) {
+                return false;
+            }
+            // 그 외에는 hub로 간주 (기본 페이지가 hub일 수 있음)
+            return true;
+        }
+        
+        return false;
     }
     
     // 로그인 상태 확인 및 리다이렉트
@@ -168,14 +182,19 @@
         // 인증 상태 리스너
         if (window.AuthHelper) {
             window.AuthHelper.onAuthStateChanged((user) => {
+                const userDisplay = document.getElementById('userDisplay');
+                
                 if (user) {
                     // 로그인 상태
                     // hub 페이지에서만 사용자 표시 추가
                     if (isHubPage()) {
+                        // 기존 프로필이 있으면 제거 후 다시 추가 (위치 보정)
+                        if (userDisplay) {
+                            userDisplay.remove();
+                        }
                         addUserDisplay();
                     } else {
-                        // 다른 페이지에서는 사용자 표시 제거
-                        const userDisplay = document.getElementById('userDisplay');
+                        // 다른 페이지(index.html 등)에서는 사용자 표시 제거
                         if (userDisplay) {
                             userDisplay.remove();
                         }
@@ -183,7 +202,6 @@
                     }
                 } else {
                     // 로그아웃 상태
-                    const userDisplay = document.getElementById('userDisplay');
                     if (userDisplay) {
                         userDisplay.remove();
                     }
@@ -193,6 +211,14 @@
         } else {
             // AuthHelper가 없으면 잠시 후 다시 시도
             setTimeout(init, 100);
+        }
+        
+        // 초기 로드 시에도 프로필 제거 (index.html인 경우)
+        if (!isHubPage()) {
+            const existingUserDisplay = document.getElementById('userDisplay');
+            if (existingUserDisplay) {
+                existingUserDisplay.remove();
+            }
         }
     }
     
