@@ -31,6 +31,7 @@ class NotificationManager {
     setupRealtimeListener() {
         if (window.RealtimeDBHelper) {
             RealtimeDBHelper.onValue('notifications', (data) => {
+                console.log('알림 데이터 수신:', data);
                 if (data) {
                     // 데이터를 배열로 변환
                     this.notifications = Object.keys(data).map(key => ({
@@ -40,10 +41,18 @@ class NotificationManager {
                         // 최신순 정렬
                         return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
                     });
+                    console.log('알림 배열 변환 완료:', this.notifications.length, '개');
+                    this.updateBadge();
+                    this.renderNotifications();
+                } else {
+                    console.log('알림 데이터가 없습니다.');
+                    this.notifications = [];
                     this.updateBadge();
                     this.renderNotifications();
                 }
             });
+        } else {
+            console.warn('RealtimeDBHelper가 로드되지 않았습니다.');
         }
     }
 
@@ -86,8 +95,11 @@ class NotificationManager {
     // 알림 로드
     async loadNotifications() {
         try {
+            console.log('알림 로드 시작...');
             if (window.RealtimeDBHelper) {
+                console.log('RealtimeDBHelper 사용');
                 const data = await RealtimeDBHelper.get('notifications');
+                console.log('RealtimeDB에서 가져온 데이터:', data);
                 if (data) {
                     // 객체를 배열로 변환
                     this.notifications = Object.keys(data).map(key => ({
@@ -96,12 +108,21 @@ class NotificationManager {
                     })).sort((a, b) => {
                         return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
                     });
+                    console.log('알림 로드 완료:', this.notifications.length, '개');
+                } else {
+                    console.log('RealtimeDB에 알림 데이터가 없습니다.');
+                    this.notifications = [];
                 }
             } else {
+                console.log('RealtimeDBHelper 없음, LocalStorage 사용');
                 // LocalStorage 폴백
                 const saved = localStorage.getItem('notifications');
                 if (saved) {
                     this.notifications = JSON.parse(saved);
+                    console.log('LocalStorage에서 알림 로드:', this.notifications.length, '개');
+                } else {
+                    console.log('LocalStorage에도 알림 데이터가 없습니다.');
+                    this.notifications = [];
                 }
             }
         } catch (error) {
@@ -289,54 +310,75 @@ class NotificationManager {
         const list = document.getElementById('notificationList');
         const noNotifications = document.getElementById('noNotifications');
         
-        if (!list) return;
+        console.log('알림 렌더링 시작:', {
+            listExists: !!list,
+            notificationsCount: this.notifications.length,
+            notifications: this.notifications
+        });
+        
+        if (!list) {
+            console.error('notificationList 요소를 찾을 수 없습니다.');
+            return;
+        }
 
         if (this.notifications.length === 0) {
             list.innerHTML = '';
             if (noNotifications) {
                 noNotifications.style.display = 'block';
             }
+            console.log('알림이 없어서 "알림이 없습니다" 메시지 표시');
             return;
         }
 
         if (noNotifications) {
             noNotifications.style.display = 'none';
         }
+        
+        console.log('알림 목록 렌더링 중:', this.notifications.length, '개');
 
-        list.innerHTML = this.notifications.map(notif => {
-            const readClass = notif.read ? 'read' : 'unread';
-            const timeAgo = this.getTimeAgo(notif.createdAt);
-            
-            return `
-                <div class="notification-item ${readClass}" data-id="${notif.id}">
-                    <div class="notification-content" style="padding: 12px 15px; border-bottom: 1px solid #f0f0f0; cursor: pointer;">
-                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                            <div style="flex: 1;">
-                                <div style="font-weight: ${notif.read ? '400' : '600'}; color: #333; margin-bottom: 4px;">
-                                    새로운 용어가 감지되었습니다
+        try {
+            list.innerHTML = this.notifications.map(notif => {
+                const readClass = notif.read ? 'read' : 'unread';
+                const timeAgo = this.getTimeAgo(notif.createdAt || new Date().toISOString());
+                const korean = notif.korean || '(한국어 없음)';
+                const japanese = notif.japanese || '(일본어 없음)';
+                
+                return `
+                    <div class="notification-item ${readClass}" data-id="${notif.id}">
+                        <div class="notification-content" style="padding: 12px 15px; border-bottom: 1px solid #f0f0f0; cursor: pointer;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                                <div style="flex: 1;">
+                                    <div style="font-weight: ${notif.read ? '400' : '600'}; color: #333; margin-bottom: 4px;">
+                                        새로운 용어가 감지되었습니다
+                                    </div>
+                                    <div style="font-size: 13px; color: #666; margin-bottom: 4px;">
+                                        <strong>한국어:</strong> ${this.escapeHtml(korean)}<br>
+                                        <strong>日本語:</strong> ${this.escapeHtml(japanese)}
+                                    </div>
+                                    <div style="font-size: 11px; color: #999; margin-top: 4px;">
+                                        ${timeAgo}
+                                    </div>
                                 </div>
-                                <div style="font-size: 13px; color: #666; margin-bottom: 4px;">
-                                    <strong>한국어:</strong> ${this.escapeHtml(notif.korean)}<br>
-                                    <strong>日本語:</strong> ${this.escapeHtml(notif.japanese)}
-                                </div>
-                                <div style="font-size: 11px; color: #999; margin-top: 4px;">
-                                    ${timeAgo}
-                                </div>
+                                ${!notif.read ? '<div style="width: 8px; height: 8px; background: #2b68dc; border-radius: 50%; margin-left: 10px; flex-shrink: 0;"></div>' : ''}
                             </div>
-                            ${!notif.read ? '<div style="width: 8px; height: 8px; background: #2b68dc; border-radius: 50%; margin-left: 10px; flex-shrink: 0;"></div>' : ''}
-                        </div>
-                        <div style="display: flex; gap: 8px; margin-top: 10px;">
-                            <button class="btn-register-term btn btn-primary" style="flex: 1; padding: 6px 12px; font-size: 12px;" data-id="${notif.id}">
-                                등록
-                            </button>
-                            <button class="btn-ignore-term btn btn-secondary" style="flex: 1; padding: 6px 12px; font-size: 12px;" data-id="${notif.id}">
-                                무시
-                            </button>
+                            <div style="display: flex; gap: 8px; margin-top: 10px;">
+                                <button class="btn-register-term btn btn-primary" style="flex: 1; padding: 6px 12px; font-size: 12px;" data-id="${notif.id}">
+                                    등록
+                                </button>
+                                <button class="btn-ignore-term btn btn-secondary" style="flex: 1; padding: 6px 12px; font-size: 12px;" data-id="${notif.id}">
+                                    무시
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `;
-        }).join('');
+                `;
+            }).join('');
+            
+            console.log('알림 목록 HTML 생성 완료:', list.innerHTML.length, '문자');
+        } catch (error) {
+            console.error('알림 목록 렌더링 중 오류:', error);
+            list.innerHTML = '<div style="padding: 20px; color: #999; text-align: center;">알림을 표시하는 중 오류가 발생했습니다.</div>';
+        }
 
         // 이벤트 리스너 추가
         list.querySelectorAll('.btn-register-term').forEach(btn => {

@@ -4,9 +4,18 @@
     
     // 현재 페이지가 hub인지 확인
     function isHubPage() {
-        return window.location.pathname.endsWith(HUB_PAGE) || 
-               window.location.pathname.endsWith('/') ||
-               window.location.pathname.endsWith('/hub.html');
+        const pathname = window.location.pathname;
+        const href = window.location.href;
+        
+        // index.html이면 hub가 아님
+        if (pathname.includes('index.html') || href.includes('index.html')) {
+            return false;
+        }
+        
+        // hub.html 또는 루트 경로('/')만 hub 페이지로 인식
+        return pathname.endsWith(HUB_PAGE) || 
+               pathname.endsWith('/hub.html') ||
+               (pathname === '/' || pathname === '');
     }
     
     // 로그인 상태 확인 및 리다이렉트
