@@ -1492,7 +1492,9 @@ class GlossaryManager {
         this.renderCategoryFilter();
         this.renderCategoryFilterMain(); // 메인 필터도 업데이트
         this.renderCategoryList();
-        this.renderCategoryCards(); // 카테고리 카드도 업데이트
+        if (this.currentView === 'categories') {
+            this.renderCategoryCardsInitial(); // 카테고리 카드도 업데이트
+        }
         input.value = '';
     }
 
