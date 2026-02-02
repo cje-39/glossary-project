@@ -25,10 +25,15 @@
   to = "/.netlify/functions/claude"
   status = 200
 
+[[redirects]]
+  from = "/api/confluence"
+  to = "/.netlify/functions/confluence"
+  status = 200
+
 # 헤더 설정 (CORS)
 [[headers]]
   for = "/.netlify/functions/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Headers = "Content-Type"
-    Access-Control-Allow-Methods = "POST, OPTIONS"
+    Access-Control-Allow-Methods = "POST, GET, OPTIONS"
