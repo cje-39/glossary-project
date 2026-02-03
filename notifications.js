@@ -119,7 +119,10 @@ class NotificationManager {
             this.loadNotifications().then(() => {
                 this.renderNotifications();
                 this.updateUnreadCountDisplay();
+                // 모달을 화면 중앙에 표시
                 modal.style.display = 'flex';
+                modal.style.alignItems = 'center';
+                modal.style.justifyContent = 'center';
                 console.log('알림 모달 열림, 알림 개수:', this.notifications.length);
             });
         } else {
