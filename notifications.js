@@ -61,27 +61,50 @@ class NotificationManager {
         // 알림 벨 클릭
         const bell = document.getElementById('notificationBell');
         if (bell) {
-            bell.addEventListener('click', (e) => {
+            // 기존 이벤트 리스너가 있다면 제거 (중복 방지)
+            const newClickHandler = (e) => {
                 e.stopPropagation();
+                e.preventDefault();
+                console.log('알림 벨 클릭됨');
                 this.toggleDropdown();
-            });
+            };
+            
+            // 기존 핸들러 제거를 위해 클론 후 교체
+            const bellClone = bell.cloneNode(true);
+            bell.parentNode.replaceChild(bellClone, bell);
+            
+            // 새 핸들러 추가
+            const bellElement = document.getElementById('notificationBell');
+            if (bellElement) {
+                bellElement.addEventListener('click', newClickHandler);
+                console.log('알림 벨 이벤트 리스너 등록 완료');
+            }
+        } else {
+            console.warn('notificationBell 요소를 찾을 수 없습니다.');
         }
 
         // 모두 읽음 버튼
         const markAllReadBtn = document.getElementById('markAllReadBtn');
         if (markAllReadBtn) {
-            markAllReadBtn.addEventListener('click', () => {
+            markAllReadBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 this.markAllAsRead();
             });
         }
 
-        // 외부 클릭 시 드롭다운 닫기
-        document.addEventListener('click', (e) => {
-            const dropdown = document.getElementById('notificationDropdown');
-            if (dropdown && !dropdown.contains(e.target) && !bell.contains(e.target)) {
-                dropdown.style.display = 'none';
-            }
-        });
+        // 외부 클릭 시 드롭다운 닫기 (한 번만 등록)
+        if (!this.externalClickHandler) {
+            this.externalClickHandler = (e) => {
+                const dropdown = document.getElementById('notificationDropdown');
+                const bell = document.getElementById('notificationBell');
+                if (dropdown && bell) {
+                    if (!dropdown.contains(e.target) && !bell.contains(e.target)) {
+                        dropdown.style.display = 'none';
+                    }
+                }
+            };
+            document.addEventListener('click', this.externalClickHandler);
+        }
     }
 
     // 드롭다운 토글
@@ -91,9 +114,11 @@ class NotificationManager {
             const isHidden = dropdown.style.display === 'none' || !dropdown.style.display;
             if (isHidden) {
                 // 드롭다운을 열 때 알림 다시 렌더링
-                this.renderNotifications();
-                dropdown.style.display = 'block';
-                console.log('알림 드롭다운 열림');
+                this.loadNotifications().then(() => {
+                    this.renderNotifications();
+                    dropdown.style.display = 'block';
+                    console.log('알림 드롭다운 열림, 알림 개수:', this.notifications.length);
+                });
             } else {
                 dropdown.style.display = 'none';
                 console.log('알림 드롭다운 닫힘');
