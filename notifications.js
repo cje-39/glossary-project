@@ -66,7 +66,7 @@ class NotificationManager {
                 e.stopPropagation();
                 e.preventDefault();
                 console.log('알림 벨 클릭됨');
-                this.toggleDropdown();
+                this.showModal();
             };
             
             // 기존 핸들러 제거를 위해 클론 후 교체
@@ -92,39 +92,47 @@ class NotificationManager {
             });
         }
 
-        // 외부 클릭 시 드롭다운 닫기 (한 번만 등록)
-        if (!this.externalClickHandler) {
-            this.externalClickHandler = (e) => {
-                const dropdown = document.getElementById('notificationDropdown');
-                const bell = document.getElementById('notificationBell');
-                if (dropdown && bell) {
-                    if (!dropdown.contains(e.target) && !bell.contains(e.target)) {
-                        dropdown.style.display = 'none';
-                    }
+        // 모달 닫기 버튼
+        const closeModal = document.getElementById('closeNotificationModal');
+        if (closeModal) {
+            closeModal.addEventListener('click', () => {
+                this.hideModal();
+            });
+        }
+
+        // 모달 배경 클릭 시 닫기
+        const modal = document.getElementById('notificationModal');
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    this.hideModal();
                 }
-            };
-            document.addEventListener('click', this.externalClickHandler);
+            });
         }
     }
 
-    // 드롭다운 토글
-    toggleDropdown() {
-        const dropdown = document.getElementById('notificationDropdown');
-        if (dropdown) {
-            const isHidden = dropdown.style.display === 'none' || !dropdown.style.display;
-            if (isHidden) {
-                // 드롭다운을 열 때 알림 다시 렌더링
-                this.loadNotifications().then(() => {
-                    this.renderNotifications();
-                    dropdown.style.display = 'block';
-                    console.log('알림 드롭다운 열림, 알림 개수:', this.notifications.length);
-                });
-            } else {
-                dropdown.style.display = 'none';
-                console.log('알림 드롭다운 닫힘');
-            }
+    // 모달 표시
+    showModal() {
+        const modal = document.getElementById('notificationModal');
+        if (modal) {
+            // 모달을 열 때 알림 다시 로드 및 렌더링
+            this.loadNotifications().then(() => {
+                this.renderNotifications();
+                this.updateUnreadCountDisplay();
+                modal.style.display = 'flex';
+                console.log('알림 모달 열림, 알림 개수:', this.notifications.length);
+            });
         } else {
-            console.error('notificationDropdown 요소를 찾을 수 없습니다.');
+            console.error('notificationModal 요소를 찾을 수 없습니다.');
+        }
+    }
+
+    // 모달 숨기기
+    hideModal() {
+        const modal = document.getElementById('notificationModal');
+        if (modal) {
+            modal.style.display = 'none';
+            console.log('알림 모달 닫힘');
         }
     }
 
@@ -339,6 +347,15 @@ class NotificationManager {
                 badge.style.display = 'none';
             }
         }
+        this.updateUnreadCountDisplay();
+    }
+
+    // 읽지 않은 알림 개수 표시 업데이트
+    updateUnreadCountDisplay() {
+        const unreadCountDisplay = document.getElementById('unreadCountDisplay');
+        if (unreadCountDisplay) {
+            unreadCountDisplay.textContent = this.unreadCount;
+        }
     }
 
     // 알림 목록 렌더링
@@ -380,28 +397,30 @@ class NotificationManager {
                 const japanese = notif.japanese || '(일본어 없음)';
                 
                 return `
-                    <div class="notification-item ${readClass}" data-id="${notif.id}">
-                        <div class="notification-content" style="padding: 12px 15px; border-bottom: 1px solid #f0f0f0; cursor: pointer;">
-                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                    <div class="notification-item ${readClass}" data-id="${notif.id}" style="border-bottom: 1px solid #f0f0f0; ${!notif.read ? 'background: #f8f9ff;' : ''}">
+                        <div class="notification-content" style="padding: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
                                 <div style="flex: 1;">
-                                    <div style="font-weight: ${notif.read ? '400' : '600'}; color: #333; margin-bottom: 4px;">
-                                        새로운 용어가 감지되었습니다
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                        ${!notif.read ? '<div style="width: 8px; height: 8px; background: #2b68dc; border-radius: 50%; flex-shrink: 0;"></div>' : ''}
+                                        <div style="font-weight: ${notif.read ? '400' : '600'}; color: #333; font-size: 14px;">
+                                            새로운 용어가 감지되었습니다
+                                        </div>
                                     </div>
-                                    <div style="font-size: 13px; color: #666; margin-bottom: 4px;">
-                                        <strong>한국어:</strong> ${this.escapeHtml(korean)}<br>
-                                        <strong>日本語:</strong> ${this.escapeHtml(japanese)}
+                                    <div style="font-size: 13px; color: #666; margin-bottom: 6px; line-height: 1.6;">
+                                        <div style="margin-bottom: 4px;"><strong>한국어:</strong> ${this.escapeHtml(korean)}</div>
+                                        <div><strong>日本語:</strong> ${this.escapeHtml(japanese)}</div>
                                     </div>
-                                    <div style="font-size: 11px; color: #999; margin-top: 4px;">
+                                    <div style="font-size: 11px; color: #999; margin-top: 6px;">
                                         ${timeAgo}
                                     </div>
                                 </div>
-                                ${!notif.read ? '<div style="width: 8px; height: 8px; background: #2b68dc; border-radius: 50%; margin-left: 10px; flex-shrink: 0;"></div>' : ''}
                             </div>
-                            <div style="display: flex; gap: 8px; margin-top: 10px;">
-                                <button class="btn-register-term btn btn-primary" style="flex: 1; padding: 6px 12px; font-size: 12px;" data-id="${notif.id}">
+                            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                                <button class="btn-register-term btn btn-primary" style="flex: 1; padding: 8px 16px; font-size: 13px;" data-id="${notif.id}">
                                     등록
                                 </button>
-                                <button class="btn-ignore-term btn btn-secondary" style="flex: 1; padding: 6px 12px; font-size: 12px;" data-id="${notif.id}">
+                                <button class="btn-ignore-term btn btn-secondary" style="flex: 1; padding: 8px 16px; font-size: 13px;" data-id="${notif.id}">
                                     무시
                                 </button>
                             </div>
