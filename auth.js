@@ -5,30 +5,19 @@
     // 현재 페이지가 hub인지 확인
     function isHubPage() {
         const pathname = window.location.pathname;
-        const href = window.location.href;
+        const href = window.location.href.toLowerCase();
         const filename = pathname.split('/').pop() || '';
         
-        // index.html이면 hub가 아님
-        if (filename === 'index.html' || pathname.includes('index.html') || href.includes('index.html')) {
-            return false;
-        }
-        
-        // hub.html만 hub 페이지로 인식
-        if (filename === HUB_PAGE || pathname.endsWith('/hub.html')) {
+        // hub.html이 명시적으로 포함되어 있는지 확인
+        if (filename === HUB_PAGE || 
+            pathname.endsWith('/hub.html') || 
+            pathname.endsWith('/hub') ||
+            href.includes('/hub.html') ||
+            href.endsWith('/hub')) {
             return true;
         }
         
-        // 루트 경로('/')인 경우, index.html이 아닌 경우만 hub로 인식
-        // 하지만 명시적으로 hub.html이 아니면 false
-        if (pathname === '/' || pathname === '') {
-            // index.html이 명시적으로 있으면 false
-            if (href.includes('index.html')) {
-                return false;
-            }
-            // 그 외에는 hub로 간주 (기본 페이지가 hub일 수 있음)
-            return true;
-        }
-        
+        // 그 외의 모든 경우는 hub가 아님
         return false;
     }
     
@@ -218,13 +207,29 @@
             setTimeout(init, 100);
         }
         
-        // 초기 로드 시에도 프로필 제거 (index.html인 경우)
-        if (!isHubPage()) {
-            const existingUserDisplay = document.getElementById('userDisplay');
-            if (existingUserDisplay) {
-                existingUserDisplay.remove();
+        // 초기 로드 시에도 프로필 제거 (hub가 아닌 경우)
+        // 즉시 실행하고, DOM 로드 후에도 다시 확인
+        function removeProfileIfNotHub() {
+            if (!isHubPage()) {
+                const existingUserDisplay = document.getElementById('userDisplay');
+                if (existingUserDisplay) {
+                    existingUserDisplay.remove();
+                }
             }
         }
+        
+        // 즉시 실행
+        removeProfileIfNotHub();
+        
+        // DOM 로드 후에도 다시 확인
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', removeProfileIfNotHub);
+        } else {
+            setTimeout(removeProfileIfNotHub, 100);
+        }
+        
+        // 페이지 전환 시에도 확인 (popstate 이벤트)
+        window.addEventListener('popstate', removeProfileIfNotHub);
     }
     
     // 전역으로 함수 노출 (hub-auth.js에서 사용)
