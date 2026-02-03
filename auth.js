@@ -48,6 +48,11 @@
     
     // 사용자명 표시 및 프로필 드롭다운 추가
     function addUserDisplay() {
+        // hub 페이지가 아니면 프로필을 표시하지 않음
+        if (!isHubPage()) {
+            return;
+        }
+        
         // 이미 추가되어 있으면 스킵
         if (document.getElementById('userDisplay')) {
             return;
@@ -221,6 +226,10 @@
             }
         }
     }
+    
+    // 전역으로 함수 노출 (hub-auth.js에서 사용)
+    window.addUserDisplay = addUserDisplay;
+    window.isHubPage = isHubPage;
     
     // DOM 로드 후 초기화
     if (document.readyState === 'loading') {
