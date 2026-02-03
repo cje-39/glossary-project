@@ -366,10 +366,14 @@ class NotificationManager {
         const list = document.getElementById('notificationList');
         const noNotifications = document.getElementById('noNotifications');
         
+        // 읽지 않은 알림만 필터링
+        const unreadNotifications = this.notifications.filter(notif => !notif.read);
+        
         console.log('알림 렌더링 시작:', {
             listExists: !!list,
-            notificationsCount: this.notifications.length,
-            notifications: this.notifications
+            totalNotifications: this.notifications.length,
+            unreadNotifications: unreadNotifications.length,
+            notifications: unreadNotifications
         });
         
         if (!list) {
@@ -377,12 +381,12 @@ class NotificationManager {
             return;
         }
 
-        if (this.notifications.length === 0) {
+        if (unreadNotifications.length === 0) {
             list.innerHTML = '';
             if (noNotifications) {
                 noNotifications.style.display = 'block';
             }
-            console.log('알림이 없어서 "알림이 없습니다" 메시지 표시');
+            console.log('읽지 않은 알림이 없어서 "알림이 없습니다" 메시지 표시');
             return;
         }
 
@@ -390,10 +394,10 @@ class NotificationManager {
             noNotifications.style.display = 'none';
         }
         
-        console.log('알림 목록 렌더링 중:', this.notifications.length, '개');
+        console.log('읽지 않은 알림 목록 렌더링 중:', unreadNotifications.length, '개');
 
         try {
-            list.innerHTML = this.notifications.map(notif => {
+            list.innerHTML = unreadNotifications.map(notif => {
                 const readClass = notif.read ? 'read' : 'unread';
                 const timeAgo = this.getTimeAgo(notif.createdAt || new Date().toISOString());
                 const korean = notif.korean || '(한국어 없음)';
