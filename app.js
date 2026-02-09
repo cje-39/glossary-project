@@ -21,8 +21,7 @@ class GlossaryManager {
         this.searchDebounceTimer = null; // 검색 디바운스 타이머
         this.searchResultsPage = 1; // 검색 결과 페이지
         this.searchResultsPerPage = 10; // 검색 결과 페이지당 항목 수
-        this.modalImageData = null; // 모달 내 이미지 데이터
-        this.modalImageType = 'image/jpeg'; // 모달 내 이미지 타입
+        this.modalImages = []; // 모달 내 이미지 데이터 배열 [{data: base64, type: mimeType, file: File}, ...]
         this.modalExtractedTerms = []; // 모달 내 추출된 용어 목록
         
         // 카테고리별 아이콘 매핑
@@ -42,11 +41,11 @@ class GlossaryManager {
         try {
             await this.loadData();
             await this.loadCategories();
-            this.loadCategoryIcons(); // 카테고리 아이콘 로드
+            await this.loadCategoryIcons(); // 카테고리 아이콘 로드
             this.setupEventListeners();
             this.renderCategoryCheckboxes();
             this.renderCategoryFilterMain(); // 메인 카테고리 필터 렌더링
-            this.renderCategoryCardsInitial(); // 카테고리 카드 뷰 렌더링
+            this.renderCategoryCardsInitial(); // 카테고리 아이콘 로드 후 카드 렌더링
             
             // 렌더링 확인
             const grid = document.getElementById('categoryGrid');
@@ -107,10 +106,19 @@ class GlossaryManager {
     // 데이터 로드 (Firestore → LocalStorage → JSON 파일)
     async loadData() {
         try {
+            // FirestoreHelper가 사용 가능할 때까지 대기
+            let attempts = 0;
+            while (typeof window.FirestoreHelper === 'undefined' && attempts < 50) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            
             // Firestore에서 먼저 시도
             if (window.FirestoreHelper) {
+                console.log('Firestore에서 용어 데이터 로드 시도...');
                 const data = await FirestoreHelper.load('glossary', 'terms');
                 if (data && data.terms && Array.isArray(data.terms)) {
+                    console.log(`Firestore에서 ${data.terms.length}개의 용어 로드됨`);
                     this.terms = data.terms.map(term => ({
                         ...term,
                         category: Array.isArray(term.category) ? term.category : (term.category ? [term.category] : []),
@@ -123,6 +131,7 @@ class GlossaryManager {
                     // 실시간 동기화 설정
                     FirestoreHelper.onSnapshot('glossary', 'terms', (data) => {
                         if (data && data.terms) {
+                            console.log(`Firestore 실시간 업데이트: ${data.terms.length}개의 용어`);
                             this.terms = data.terms.map(term => ({
                                 ...term,
                                 category: Array.isArray(term.category) ? term.category : (term.category ? [term.category] : []),
@@ -134,15 +143,19 @@ class GlossaryManager {
                                 this.renderCategoryCardsInitial();
                             }
                             if (this.currentView === 'terms') {
-                                this.renderTerms();
+                                this.render();
                             }
                         }
                     });
                     return;
+                } else {
+                    console.log('Firestore에 용어 데이터가 없습니다.');
                 }
+            } else {
+                console.log('FirestoreHelper를 사용할 수 없습니다.');
             }
         } catch (error) {
-            console.log('Firestore에서 데이터 로드 실패, LocalStorage 사용:', error);
+            console.error('Firestore에서 데이터 로드 실패, LocalStorage 사용:', error);
         }
 
         // LocalStorage에서 로드
@@ -283,29 +296,45 @@ class GlossaryManager {
             }
         });
 
-        // CSV 업로드
-        document.getElementById('csvUploadBtn').addEventListener('click', () => {
-            document.getElementById('csvUploadInput').click();
-        });
+        // CSV 업로드 (중복 등록 방지)
+        const csvUploadBtn = document.getElementById('csvUploadBtn');
+        const csvUploadInput = document.getElementById('csvUploadInput');
+        
+        if (csvUploadBtn && !csvUploadBtn.hasAttribute('data-listener-attached')) {
+            csvUploadBtn.setAttribute('data-listener-attached', 'true');
+            csvUploadBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (csvUploadInput) {
+                    csvUploadInput.click();
+                }
+            });
+        }
 
-        document.getElementById('csvUploadInput').addEventListener('change', (e) => {
-            this.handleCsvUpload(e);
-        });
+        if (csvUploadInput && !csvUploadInput.hasAttribute('data-listener-attached')) {
+            csvUploadInput.setAttribute('data-listener-attached', 'true');
+            csvUploadInput.addEventListener('change', (e) => {
+                this.handleCsvUpload(e);
+            });
+        }
 
         // CSV 다운로드
         document.getElementById('csvDownloadBtn').addEventListener('click', () => {
             this.downloadCsv();
         });
         
-        // 선택 항목 삭제 버튼
+        // 선택 항목 삭제 버튼 (중복 등록 방지)
         const deleteSelectedTermsBtn = document.getElementById('deleteSelectedTermsBtn');
-        if (deleteSelectedTermsBtn) {
-            deleteSelectedTermsBtn.addEventListener('click', () => {
+        if (deleteSelectedTermsBtn && !deleteSelectedTermsBtn.hasAttribute('data-listener-attached')) {
+            deleteSelectedTermsBtn.setAttribute('data-listener-attached', 'true');
+            deleteSelectedTermsBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 this.deleteSelectedTerms();
             });
         }
         
-        // 전체 선택 체크박스
+        // 전체 선택 체크박스 (용어 목록 뷰)
         const selectAllGlossaryCheckbox = document.getElementById('selectAllGlossaryCheckbox');
         if (selectAllGlossaryCheckbox) {
             selectAllGlossaryCheckbox.addEventListener('change', (e) => {
@@ -313,19 +342,46 @@ class GlossaryManager {
             });
         }
 
-        // 용어 모달 닫기
-        document.querySelector('.close').addEventListener('click', () => {
-            this.closeModal();
-        });
+        // 검색 결과 전체 선택 체크박스
+        const selectAllSearchCheckbox = document.getElementById('selectAllSearchCheckbox');
+        if (selectAllSearchCheckbox && !selectAllSearchCheckbox.hasAttribute('data-listener-attached')) {
+            selectAllSearchCheckbox.setAttribute('data-listener-attached', 'true');
+            selectAllSearchCheckbox.addEventListener('change', (e) => {
+                this.toggleSelectAllSearchResults(e.target.checked);
+            });
+        }
 
-        document.getElementById('cancelBtn').addEventListener('click', () => {
-            this.closeModal();
-        });
+        // 검색 결과 선택 항목 삭제 버튼 (중복 등록 방지)
+        const deleteSelectedSearchResultsBtn = document.getElementById('deleteSelectedSearchResultsBtn');
+        if (deleteSelectedSearchResultsBtn && !deleteSelectedSearchResultsBtn.hasAttribute('data-listener-attached')) {
+            deleteSelectedSearchResultsBtn.setAttribute('data-listener-attached', 'true');
+            deleteSelectedSearchResultsBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.deleteSelectedTerms();
+            });
+        }
 
-        // 용어 모달 외부 클릭 시 닫기
-        document.getElementById('termModal').addEventListener('click', (e) => {
+        // 용어 모달 닫기 (이벤트 위임 사용)
+        document.addEventListener('click', (e) => {
+            // X 버튼 클릭
+            if (e.target.classList.contains('close') || e.target.closest('.close')) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.closeModal();
+                return;
+            }
+            // 취소 버튼 클릭
+            if (e.target.id === 'cancelBtn' || e.target.closest('#cancelBtn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.closeModal();
+                return;
+            }
+            // 모달 외부 클릭 시 닫기
             if (e.target.id === 'termModal') {
                 this.closeModal();
+                return;
             }
         });
 
@@ -718,6 +774,9 @@ class GlossaryManager {
                 searchPrevBtn.disabled = this.searchResultsPage === 1;
                 searchNextBtn.disabled = this.searchResultsPage >= maxPage;
             }
+
+            // 검색 결과 전체 선택 체크박스 상태 업데이트
+            this.updateSelectAllSearchCheckbox();
         } else {
             // 검색 결과가 없으면 메시지 표시
             searchResultsContainer.style.display = 'block';
@@ -881,6 +940,9 @@ class GlossaryManager {
                 searchPrevBtn.disabled = this.searchResultsPage === 1;
                 searchNextBtn.disabled = this.searchResultsPage >= maxPage;
             }
+
+            // 검색 결과 전체 선택 체크박스 상태 업데이트
+            this.updateSelectAllSearchCheckbox();
         } else {
             // 용어가 없으면 메시지 표시
             searchResultsContainer.style.display = 'block';
@@ -892,6 +954,41 @@ class GlossaryManager {
                 </tr>
             `;
         }
+    }
+
+    // 검색 결과 전체 선택 체크박스 상태 업데이트
+    updateSelectAllSearchCheckbox() {
+        const selectAllCheckbox = document.getElementById('selectAllSearchCheckbox');
+        const searchResultsBody = document.getElementById('searchResultsBody');
+        
+        if (!selectAllCheckbox || !searchResultsBody) return;
+
+        // 현재 페이지의 모든 체크박스 가져오기
+        const checkboxes = searchResultsBody.querySelectorAll('.term-checkbox');
+        if (checkboxes.length === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+            return;
+        }
+
+        // 현재 페이지의 모든 용어가 선택되어 있는지 확인
+        let allChecked = true;
+        let anyChecked = false;
+
+        checkboxes.forEach(checkbox => {
+            const termId = parseInt(checkbox.getAttribute('data-id'));
+            if (termId) {
+                if (this.selectedTermIds.has(termId)) {
+                    anyChecked = true;
+                } else {
+                    allChecked = false;
+                }
+            }
+        });
+
+        // 체크박스 상태 업데이트
+        selectAllCheckbox.checked = allChecked && checkboxes.length > 0;
+        selectAllCheckbox.indeterminate = anyChecked && !allChecked;
     }
     
     // 카테고리 뷰 표시
@@ -1224,7 +1321,28 @@ class GlossaryManager {
             title.textContent = '용어 추가';
             form.reset();
             document.getElementById('termId').value = '';
-            document.querySelectorAll('.category-checkbox').forEach(cb => cb.checked = false);
+            document.querySelectorAll('.category-checkbox').forEach(cb => {
+                cb.checked = false;
+                const label = cb.closest('.category-checkbox-label');
+                if (label) {
+                    label.classList.remove('checked');
+                }
+            });
+            
+            // 카테고리 뷰에서 추가하는 경우 현재 선택된 카테고리 자동 체크
+            // renderCategoryCheckboxes가 완료된 후 체크박스를 찾아야 하므로 약간의 지연 필요
+            setTimeout(() => {
+                if (this.selectedCategory) {
+                    const checkbox = document.querySelector(`.category-checkbox[value="${this.selectedCategory}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        const label = checkbox.closest('.category-checkbox-label');
+                        if (label) {
+                            label.classList.add('checked');
+                        }
+                    }
+                }
+            }, 100);
         }
         
         modal.classList.add('show');
@@ -1250,9 +1368,17 @@ class GlossaryManager {
         const notes = document.getElementById('notesInput').value.trim();
         
         // 선택된 카테고리 가져오기
-        const selectedCategories = Array.from(
+        let selectedCategories = Array.from(
             document.querySelectorAll('.category-checkbox:checked')
         ).map(cb => cb.value);
+
+        // 카테고리 뷰에서 추가하는 경우, 현재 선택된 카테고리 자동 추가
+        if (!id && this.selectedCategory) {
+            // 이미 선택된 카테고리 목록에 포함되어 있지 않으면 추가
+            if (!selectedCategories.includes(this.selectedCategory)) {
+                selectedCategories.push(this.selectedCategory);
+            }
+        }
 
         if (!korean || !japanese) {
             alert('한국어와 일본어는 필수 입력 항목입니다.');
@@ -1419,8 +1545,8 @@ class GlossaryManager {
             const base64Image = e.target.result;
             this.categoryIcons[categoryName] = `<img src="${base64Image}" style="width: 60px; height: 60px; object-fit: contain;" alt="${categoryName}">`;
             
-            // 로컬 스토리지에 저장
-            this.saveCategoryIcons();
+            // 로컬 스토리지 및 Firestore에 저장
+            this.saveCategoryIcons().catch(err => console.error('아이콘 저장 실패:', err));
             
             // 카테고리 카드 다시 렌더링
             if (this.currentView === 'categories') {
@@ -1443,7 +1569,7 @@ class GlossaryManager {
     removeCategoryIcon(categoryName) {
         if (confirm('아이콘을 제거하시겠습니까?')) {
             delete this.categoryIcons[categoryName];
-            this.saveCategoryIcons();
+            this.saveCategoryIcons().catch(err => console.error('아이콘 저장 실패:', err));
             
             // 카테고리 카드 다시 렌더링
             if (this.currentView === 'categories') {
@@ -1458,17 +1584,72 @@ class GlossaryManager {
     }
     
     // 카테고리 아이콘 로드
-    loadCategoryIcons() {
+    async loadCategoryIcons() {
+        // 먼저 LocalStorage에서 로드 (기본값)
         const savedIcons = localStorage.getItem('categoryIcons');
         if (savedIcons) {
-            const loadedIcons = JSON.parse(savedIcons);
-            this.categoryIcons = { ...this.categoryIcons, ...loadedIcons };
+            try {
+                const loadedIcons = JSON.parse(savedIcons);
+                this.categoryIcons = { ...this.categoryIcons, ...loadedIcons };
+            } catch (error) {
+                console.error('LocalStorage 아이콘 파싱 실패:', error);
+            }
+        }
+        
+        try {
+            // Firestore에서 로드 (최신 데이터 우선)
+            if (window.FirestoreHelper) {
+                const data = await FirestoreHelper.load('settings', 'categoryIcons');
+                if (data && data.icons) {
+                    // Firestore 데이터로 병합 (Firestore가 우선)
+                    this.categoryIcons = { ...this.categoryIcons, ...data.icons };
+                    // LocalStorage에도 백업 저장
+                    localStorage.setItem('categoryIcons', JSON.stringify(this.categoryIcons));
+                    console.log('Firestore에서 아이콘 로드 완료:', Object.keys(data.icons).length, '개');
+                    
+                    // 실시간 동기화 리스너 설정
+                    FirestoreHelper.onSnapshot('settings', 'categoryIcons', (data) => {
+                        if (data && data.icons) {
+                            console.log('Firestore 아이콘 실시간 업데이트:', Object.keys(data.icons).length, '개');
+                            // Firestore 데이터로 병합
+                            this.categoryIcons = { ...this.categoryIcons, ...data.icons };
+                            localStorage.setItem('categoryIcons', JSON.stringify(this.categoryIcons));
+                            // 카드 다시 렌더링
+                            if (this.currentView === 'categories') {
+                                this.renderCategoryCardsInitial();
+                            }
+                        }
+                    });
+                    return;
+                } else {
+                    console.log('Firestore에 아이콘 데이터가 없습니다. LocalStorage 사용.');
+                }
+            }
+        } catch (error) {
+            console.error('Firestore에서 아이콘 로드 실패, LocalStorage 사용:', error);
         }
     }
     
     // 카테고리 아이콘 저장
-    saveCategoryIcons() {
+    async saveCategoryIcons() {
+        // LocalStorage에 즉시 저장
         localStorage.setItem('categoryIcons', JSON.stringify(this.categoryIcons));
+        console.log('아이콘 LocalStorage 저장 완료:', Object.keys(this.categoryIcons).length, '개');
+        
+        // Firestore에도 저장
+        try {
+            if (window.FirestoreHelper) {
+                await FirestoreHelper.save('settings', 'categoryIcons', {
+                    icons: this.categoryIcons
+                });
+                console.log('아이콘 Firestore 저장 완료:', Object.keys(this.categoryIcons).length, '개');
+            } else {
+                console.warn('FirestoreHelper를 사용할 수 없습니다.');
+            }
+        } catch (error) {
+            console.error('Firestore에 아이콘 저장 실패:', error);
+            // 저장 실패해도 LocalStorage에는 저장되어 있음
+        }
     }
 
     // 카테고리 추가
@@ -1567,7 +1748,7 @@ class GlossaryManager {
         if (this.categoryIcons[category]) {
             this.categoryIcons[newCategory] = this.categoryIcons[category];
             delete this.categoryIcons[category];
-            this.saveCategoryIcons();
+            this.saveCategoryIcons().catch(err => console.error('아이콘 저장 실패:', err));
         }
         
         // 카테고리 목록 업데이트
@@ -1582,7 +1763,7 @@ class GlossaryManager {
         this.renderCategoryCardsInitial();
     }
 
-    // CSV 업로드 처리
+    // 엑셀 업로드 처리
     handleCsvUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -1590,111 +1771,283 @@ class GlossaryManager {
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
-                const text = e.target.result;
-                const lines = text.split('\n').filter(line => line.trim());
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
                 
-                if (lines.length === 0) {
-                    alert('CSV 파일이 비어있습니다.');
+                // 첫 번째 시트 사용
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // JSON으로 변환
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+                
+                if (jsonData.length === 0) {
+                    alert('엑셀 파일이 비어있습니다.');
+                    event.target.value = '';
                     return;
                 }
 
                 // 헤더 확인 (첫 번째 줄)
-                const header = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-                const expectedHeaders = ['번호', '한국어', '日本語', '일본어', '카테고리', '비고'];
-                const altHeaders = ['id', 'korean', 'japanese', 'category', 'notes'];
+                const header = jsonData[0].map(h => String(h).trim());
                 
-                // 헤더 매핑 생성
-                const headerMap = {};
-                header.forEach((h, i) => {
-                    const lowerH = h.toLowerCase();
-                    if (expectedHeaders.includes(h) || altHeaders.includes(lowerH) || h === '日本語') {
-                        if (h === '번호' || lowerH === 'id') headerMap.id = i;
-                        if (h === '한국어' || lowerH === 'korean') headerMap.korean = i;
-                        if (h === '일본어' || h === '日本語' || lowerH === 'japanese') headerMap.japanese = i;
-                        if (h === '카테고리' || lowerH === 'category') headerMap.category = i;
-                        if (h === '비고' || lowerH === 'notes') headerMap.notes = i;
-                    }
-                });
-
-                if (headerMap.korean === undefined || headerMap.japanese === undefined) {
-                    alert('CSV 파일 형식이 올바르지 않습니다.\n필수 컬럼: 한국어, 일본어(日本語)');
-                    return;
-                }
-
-                // 데이터 파싱
-                const newTerms = [];
-                let addedCount = 0;
-                let skippedCount = 0;
-
-                for (let i = 1; i < lines.length; i++) {
-                    const line = lines[i];
-                    const values = this.parseCsvLine(line);
-                    
-                    if (values.length === 0) continue;
-
-                    const korean = values[headerMap.korean]?.trim();
-                    const japanese = values[headerMap.japanese]?.trim();
-                    
-                    if (!korean || !japanese) {
-                        skippedCount++;
-                        continue;
-                    }
-
-                    // 중복 체크
-                    const isDuplicate = this.terms.some(t => 
-                        t.korean === korean && t.japanese === japanese
-                    );
-
-                    if (isDuplicate) {
-                        skippedCount++;
-                        continue;
-                    }
-
-                    // 카테고리 파싱 (쉼표 또는 세미콜론으로 구분)
-                    let categories = [];
-                    if (headerMap.category !== undefined && values[headerMap.category]) {
-                        const categoryStr = values[headerMap.category].trim();
-                        if (categoryStr) {
-                            categories = categoryStr.split(/[,;]/).map(c => c.trim()).filter(Boolean);
-                        }
-                    }
-
-                    const newId = this.terms.length > 0 
-                        ? Math.max(...this.terms.map(t => t.id)) + 1 + addedCount
-                        : 1 + addedCount;
-
-                    newTerms.push({
-                        id: newId,
-                        korean: korean,
-                        japanese: japanese,
-                        category: categories,
-                        notes: headerMap.notes !== undefined ? (values[headerMap.notes]?.trim() || '') : ''
-                    });
-                    addedCount++;
-                }
-
-                if (newTerms.length > 0) {
-                    this.terms.push(...newTerms);
-                    this.saveData();
-                    this.filterTerms();
-                    
-                    alert(`총 ${addedCount}개의 용어가 추가되었습니다.${skippedCount > 0 ? `\n${skippedCount}개의 항목이 건너뛰어졌습니다 (중복 또는 필수값 누락).` : ''}`);
-                } else {
-                    alert('추가할 수 있는 용어가 없습니다.\n모든 항목이 중복이거나 필수값이 누락되었습니다.');
-                }
-
-                event.target.value = '';
+                // 미리보기 모달 표시
+                this.showExcelPreviewModal(header, jsonData.slice(1), event.target);
             } catch (error) {
-                console.error('CSV 파싱 오류:', error);
-                alert('CSV 파일을 읽는 중 오류가 발생했습니다.\n파일 형식을 확인해주세요.');
+                console.error('엑셀 파싱 오류:', error);
+                alert('엑셀 파일을 읽는 중 오류가 발생했습니다.\n파일 형식을 확인해주세요.');
+                event.target.value = '';
             }
         };
 
         reader.onerror = () => {
             alert('파일을 읽는 중 오류가 발생했습니다.');
+            event.target.value = '';
         };
 
-        reader.readAsText(file, 'UTF-8');
+        reader.readAsArrayBuffer(file);
+    }
+
+    // 엑셀 미리보기 모달 표시
+    showExcelPreviewModal(headers, dataRows, fileInput) {
+        // 기존 모달이 있으면 제거
+        const existingModal = document.getElementById('excelPreviewModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // 모달 생성
+        const modal = document.createElement('div');
+        modal.id = 'excelPreviewModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            font-family: 'Pretendard', 'Nanum Gothic', sans-serif;
+        `;
+
+        // 컬럼 매핑 상태
+        const columnMapping = {
+            korean: '',
+            japanese: ''
+        };
+
+        // 자동 매핑 시도
+        headers.forEach((h, i) => {
+            const lowerH = h.toLowerCase();
+            if (h === '한국어' || lowerH === 'korean') columnMapping.korean = i;
+            if (h === '일본어' || h === '日本語' || lowerH === 'japanese') columnMapping.japanese = i;
+        });
+
+        modal.innerHTML = `
+            <div style="background: white; border-radius: 12px; padding: 30px; max-width: 90vw; max-height: 90vh; overflow: auto; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0; font-size: 20px; color: #333;">엑셀 파일 미리보기</h2>
+                    <button id="closePreviewModal" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #999; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">&times;</button>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <h3 style="margin: 0 0 15px 0; font-size: 16px; color: #555;">컬럼 매핑 설정</h3>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-size: 14px; font-weight: 600; color: #333;">한국어 컬럼 <span style="color: red;">*</span></label>
+                            <select id="mappingKorean" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+                                <option value="">선택하세요</option>
+                                ${headers.map((h, i) => `<option value="${i}" ${columnMapping.korean === i ? 'selected' : ''}>${h || `컬럼 ${i + 1}`}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-size: 14px; font-weight: 600; color: #333;">일본어 컬럼 <span style="color: red;">*</span></label>
+                            <select id="mappingJapanese" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+                                <option value="">선택하세요</option>
+                                ${headers.map((h, i) => `<option value="${i}" ${columnMapping.japanese === i ? 'selected' : ''}>${h || `컬럼 ${i + 1}`}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <h3 style="margin: 0 0 15px 0; font-size: 16px; color: #555;">데이터 미리보기 (최대 10행)</h3>
+                    <div id="previewTableContainer" style="overflow-x: auto; max-height: 400px; border: 1px solid #e0e0e0; border-radius: 6px;">
+                        <!-- 미리보기 테이블이 여기에 동적으로 생성됩니다 -->
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button id="cancelPreviewBtn" style="padding: 10px 20px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; font-size: 14px; color: #666;">취소</button>
+                    <button id="confirmPreviewBtn" style="padding: 10px 20px; background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;">확인</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // 미리보기 테이블 렌더링 함수
+        const renderPreview = () => {
+            const koreanCol = document.getElementById('mappingKorean').value ? parseInt(document.getElementById('mappingKorean').value) : null;
+            const japaneseCol = document.getElementById('mappingJapanese').value ? parseInt(document.getElementById('mappingJapanese').value) : null;
+
+            const container = document.getElementById('previewTableContainer');
+            const previewRows = dataRows.slice(0, 10); // 최대 10행만 표시
+
+            let tableHTML = `
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                        <tr style="background: #f5f5f5; border-bottom: 2px solid #ddd;">
+                            <th style="padding: 10px; text-align: left; border: 1px solid #e0e0e0; background: #e3f2fd;">한국어</th>
+                            <th style="padding: 10px; text-align: left; border: 1px solid #e0e0e0; background: #c8e6c9;">일본어</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            previewRows.forEach((row, idx) => {
+                const korean = koreanCol !== null ? String(row[koreanCol] || '').trim() : '';
+                const japanese = japaneseCol !== null ? String(row[japaneseCol] || '').trim() : '';
+
+                tableHTML += `
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 10px; border: 1px solid #e0e0e0; background: #f0f7ff;">${this.escapeHtml(korean)}</td>
+                        <td style="padding: 10px; border: 1px solid #e0e0e0; background: #f1f8e9;">${this.escapeHtml(japanese)}</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = tableHTML;
+        };
+
+        // 초기 미리보기 렌더링
+        renderPreview();
+
+        // 컬럼 매핑 변경 시 미리보기 업데이트
+        ['mappingKorean', 'mappingJapanese'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('change', renderPreview);
+            }
+        });
+
+        // 취소 버튼
+        document.getElementById('cancelPreviewBtn').addEventListener('click', () => {
+            modal.remove();
+            fileInput.value = '';
+        });
+
+        // 닫기 버튼
+        document.getElementById('closePreviewModal').addEventListener('click', () => {
+            modal.remove();
+            fileInput.value = '';
+        });
+
+        // 모달 외부 클릭 시 닫기
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+                fileInput.value = '';
+            }
+        });
+
+        // 확인 버튼
+        document.getElementById('confirmPreviewBtn').addEventListener('click', () => {
+            const koreanCol = document.getElementById('mappingKorean').value;
+            const japaneseCol = document.getElementById('mappingJapanese').value;
+
+            if (!koreanCol || !japaneseCol) {
+                alert('한국어와 일본어 컬럼을 선택해주세요.');
+                return;
+            }
+
+            // 실제 업로드 진행
+            this.processExcelUpload(
+                dataRows,
+                {
+                    korean: parseInt(koreanCol),
+                    japanese: parseInt(japaneseCol)
+                },
+                fileInput
+            );
+
+            modal.remove();
+        });
+    }
+
+    // 엑셀 업로드 처리 (매핑 정보 사용)
+    processExcelUpload(dataRows, headerMap, fileInput) {
+        try {
+            const newTerms = [];
+            let addedCount = 0;
+            let skippedCount = 0;
+
+            for (let i = 0; i < dataRows.length; i++) {
+                const row = dataRows[i];
+                if (!row || row.length === 0) continue;
+
+                const korean = String(row[headerMap.korean] || '').trim();
+                const japanese = String(row[headerMap.japanese] || '').trim();
+                
+                if (!korean || !japanese) {
+                    skippedCount++;
+                    continue;
+                }
+
+                // 중복 체크
+                const isDuplicate = this.terms.some(t => 
+                    t.korean === korean && t.japanese === japanese
+                );
+
+                if (isDuplicate) {
+                    skippedCount++;
+                    continue;
+                }
+
+                const newId = this.terms.length > 0 
+                    ? Math.max(...this.terms.map(t => t.id)) + 1 + addedCount
+                    : 1 + addedCount;
+
+                newTerms.push({
+                    id: newId,
+                    korean: korean,
+                    japanese: japanese,
+                    category: [],
+                    notes: ''
+                });
+                addedCount++;
+            }
+
+            if (newTerms.length > 0) {
+                this.terms.push(...newTerms);
+                this.saveData();
+                this.filterTerms();
+                
+                alert(`총 ${addedCount}개의 용어가 추가되었습니다.${skippedCount > 0 ? `\n${skippedCount}개의 항목이 건너뛰어졌습니다 (중복 또는 필수값 누락).` : ''}`);
+            } else {
+                alert('추가할 수 있는 용어가 없습니다.\n모든 항목이 중복이거나 필수값이 누락되었습니다.');
+            }
+
+            fileInput.value = '';
+        } catch (error) {
+            console.error('엑셀 업로드 처리 오류:', error);
+            alert('엑셀 파일 업로드 중 오류가 발생했습니다.');
+            fileInput.value = '';
+        }
+    }
+
+    // HTML 이스케이프 헬퍼
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     // CSV 라인 파싱
@@ -1725,63 +2078,75 @@ class GlossaryManager {
         return values;
     }
 
-    // CSV 다운로드
+    // 엑셀 다운로드
     downloadCsv() {
         if (this.terms.length === 0) {
             alert('다운로드할 용어가 없습니다.');
             return;
         }
 
+        // 워크북 생성
+        const wb = XLSX.utils.book_new();
+        
+        // 데이터 준비
         const headers = ['번호', '한국어', '日本語', '카테고리', '비고'];
-        const csvRows = [headers.join(',')];
+        const data = [headers];
 
         this.terms.forEach(term => {
             const row = [
                 term.id,
-                this.escapeCsvField(term.korean),
-                this.escapeCsvField(term.japanese),
-                this.escapeCsvField((term.category || []).join(', ')),
-                this.escapeCsvField(term.notes || '')
+                term.korean,
+                term.japanese,
+                (term.category || []).join(', '),
+                term.notes || ''
             ];
-            csvRows.push(row.join(','));
+            data.push(row);
         });
 
-        const csvContent = csvRows.join('\n');
-        const BOM = '\uFEFF';
-        const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+        // 워크시트 생성
+        const ws = XLSX.utils.aoa_to_sheet(data);
         
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `glossary_${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
+        // 컬럼 너비 설정
+        ws['!cols'] = [
+            { wch: 8 },  // 번호
+            { wch: 20 }, // 한국어
+            { wch: 20 }, // 일본어
+            { wch: 15 }, // 카테고리
+            { wch: 30 }  // 비고
+        ];
 
-    // CSV 필드 이스케이프
-    escapeCsvField(field) {
-        if (field === null || field === undefined) return '';
-        const str = String(field);
-        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-            return '"' + str.replace(/"/g, '""') + '"';
-        }
-        return str;
+        // 워크시트를 워크북에 추가
+        XLSX.utils.book_append_sheet(wb, ws, '용어집');
+
+        // 파일 다운로드
+        const fileName = `glossary_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(wb, fileName);
     }
     
     // 용어 선택/해제
     toggleTermSelect(termId, checked) {
+        // termId를 숫자로 변환하여 일관성 유지
+        const id = typeof termId === 'string' ? parseInt(termId) : termId;
+        
         if (checked) {
-            this.selectedTermIds.add(termId);
+            this.selectedTermIds.add(id);
         } else {
-            this.selectedTermIds.delete(termId);
+            this.selectedTermIds.delete(id);
         }
+        
+        console.log('선택된 용어 ID:', Array.from(this.selectedTermIds), '현재 선택:', id, '체크 상태:', checked);
+        
         this.updateSelectAllGlossaryCheckbox();
         this.updateDeleteSelectedButton();
+        
+        // 검색 결과 영역이 표시되어 있으면 전체 선택 체크박스 상태 업데이트
+        const searchResultsContainer = document.getElementById('searchResultsContainer');
+        if (searchResultsContainer && searchResultsContainer.style.display !== 'none') {
+            this.updateSelectAllSearchCheckbox();
+        }
     }
     
-    // 전체 선택/해제
+    // 전체 선택/해제 (용어 목록 뷰)
     toggleSelectAllTerms(checked) {
         const startIndex = (this.currentPage - 1) * this.itemsPerPage;
         const endIndex = startIndex + this.itemsPerPage;
@@ -1804,6 +2169,38 @@ class GlossaryManager {
         });
         
         this.updateDeleteSelectedButton();
+    }
+
+    // 검색 결과 전체 선택/해제
+    toggleSelectAllSearchResults(checked) {
+        const searchResultsBody = document.getElementById('searchResultsBody');
+        if (!searchResultsBody) return;
+
+        // 검색 결과 테이블의 모든 체크박스 가져오기
+        const checkboxes = searchResultsBody.querySelectorAll('.term-checkbox');
+        
+        if (checked) {
+            // 현재 페이지의 모든 용어 선택
+            checkboxes.forEach(checkbox => {
+                const termId = parseInt(checkbox.getAttribute('data-id'));
+                if (termId) {
+                    this.selectedTermIds.add(termId);
+                    checkbox.checked = true;
+                }
+            });
+        } else {
+            // 현재 페이지의 모든 용어 선택 해제
+            checkboxes.forEach(checkbox => {
+                const termId = parseInt(checkbox.getAttribute('data-id'));
+                if (termId) {
+                    this.selectedTermIds.delete(termId);
+                    checkbox.checked = false;
+                }
+            });
+        }
+        
+        this.updateDeleteSelectedButton();
+        this.updateSelectAllSearchCheckbox();
     }
     
     // 전체 선택 체크박스 상태 업데이트
@@ -1837,18 +2234,34 @@ class GlossaryManager {
     
     // 선택 항목 삭제 버튼 표시/숨김 업데이트
     updateDeleteSelectedButton() {
+        // 용어 목록 뷰의 삭제 버튼
         const deleteBtn = document.getElementById('deleteSelectedTermsBtn');
-        if (!deleteBtn) return;
-        
-        if (this.selectedTermIds.size > 0) {
-            deleteBtn.style.display = 'inline-block';
-        } else {
-            deleteBtn.style.display = 'none';
+        if (deleteBtn) {
+            if (this.selectedTermIds.size > 0) {
+                deleteBtn.style.display = 'inline-block';
+            } else {
+                deleteBtn.style.display = 'none';
+            }
+        }
+
+        // 검색 결과 영역의 삭제 버튼
+        const searchDeleteBtn = document.getElementById('deleteSelectedSearchResultsBtn');
+        if (searchDeleteBtn) {
+            const searchResultsContainer = document.getElementById('searchResultsContainer');
+            const isSearchResultsVisible = searchResultsContainer && searchResultsContainer.style.display !== 'none';
+            
+            if (this.selectedTermIds.size > 0 && isSearchResultsVisible) {
+                searchDeleteBtn.style.display = 'inline-block';
+            } else {
+                searchDeleteBtn.style.display = 'none';
+            }
         }
     }
     
     // 선택된 용어 삭제
     deleteSelectedTerms() {
+        console.log('삭제 시도 - 선택된 용어 ID 개수:', this.selectedTermIds.size, 'ID 목록:', Array.from(this.selectedTermIds));
+        
         if (this.selectedTermIds.size === 0) {
             alert('삭제할 항목을 선택해주세요.');
             return;
@@ -1867,8 +2280,25 @@ class GlossaryManager {
             // 데이터 저장 및 필터링
             this.saveData();
             this.filterTerms();
-            this.render();
+            
+            // 검색 결과 영역이 표시되어 있으면 검색 결과 다시 렌더링
+            const searchResultsContainer = document.getElementById('searchResultsContainer');
+            const searchInput = document.getElementById('categorySearchInput');
+            
+            if (searchResultsContainer && searchResultsContainer.style.display !== 'none') {
+                const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+                if (searchTerm) {
+                    this.renderSearchResults(searchTerm);
+                } else {
+                    this.renderAllTermsInSearchResults();
+                }
+            } else {
+                // 용어 목록 뷰면 일반 렌더링
+                this.render();
+            }
+            
             this.updateDeleteSelectedButton();
+            this.updateSelectAllSearchCheckbox();
             this.updateSelectAllGlossaryCheckbox();
         }
     }
@@ -1944,7 +2374,7 @@ class GlossaryManager {
                     // 모달이 열려있으면 모달 내 이미지로 처리
                     const modal = document.getElementById('termModal');
                     if (modal && modal.classList.contains('show')) {
-                        this.processModalImageFile(file);
+                        this.processModalImageFiles([file]);
                     } else {
                         // 기존 이미지 추출 섹션이 열려있는지 확인
                         const imageExtractContent = document.getElementById('imageExtractContent');
@@ -2401,80 +2831,138 @@ class GlossaryManager {
         
         const files = event.dataTransfer.files;
         if (files.length > 0) {
-            this.processModalImageFile(files[0]);
+            this.processModalImageFiles(Array.from(files));
         }
     }
 
     // 모달 내 이미지 선택 처리
     handleModalImageSelect(event) {
-        const file = event.target.files[0];
-        if (file) {
-            this.processModalImageFile(file);
+        const files = Array.from(event.target.files);
+        if (files.length > 0) {
+            this.processModalImageFiles(files);
         }
     }
 
-    // 모달 내 이미지 파일 처리
-    processModalImageFile(file) {
-        // 이미지 파일인지 확인
-        if (!file.type.startsWith('image/')) {
-            alert('이미지 파일만 업로드 가능합니다.');
-            return;
-        }
-
-        // 파일 크기 제한 (10MB)
-        if (file.size > 10 * 1024 * 1024) {
-            alert('파일 크기는 10MB 이하여야 합니다.');
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const preview = document.getElementById('modalPreviewImage');
-            const previewContainer = document.getElementById('modalImagePreview');
-            const uploadAreaContent = document.getElementById('modalUploadAreaContent');
-            const extractBtn = document.getElementById('modalExtractTermsBtn');
-            
-            preview.src = e.target.result;
-            previewContainer.style.display = 'block';
-            // 업로드 영역의 기본 콘텐츠 숨기기
-            if (uploadAreaContent) {
-                uploadAreaContent.style.display = 'none';
-            }
-            extractBtn.disabled = false;
-            
-            // 이미지 데이터 및 타입 저장 (base64)
-            this.modalImageData = e.target.result;
-            this.modalImageType = file.type;
-        };
-        reader.onerror = () => {
-            alert('파일을 읽는 중 오류가 발생했습니다.');
-        };
-        reader.readAsDataURL(file);
-    }
-
-    // 모달 내 이미지 제거
-    removeModalImage() {
-        const preview = document.getElementById('modalPreviewImage');
-        const previewContainer = document.getElementById('modalImagePreview');
-        const uploadAreaContent = document.getElementById('modalUploadAreaContent');
+    // 모달 내 이미지 파일 처리 (여러 파일)
+    processModalImageFiles(files) {
+        const validFiles = [];
         
-        preview.src = '';
-        previewContainer.style.display = 'none';
-        // 업로드 영역의 기본 콘텐츠 다시 표시
-        if (uploadAreaContent) {
-            uploadAreaContent.style.display = 'flex';
+        // 파일 유효성 검사
+        for (const file of files) {
+            if (!file.type.startsWith('image/')) {
+                alert(`${file.name}은(는) 이미지 파일이 아닙니다. 건너뜁니다.`);
+                continue;
+            }
+            
+            if (file.size > 10 * 1024 * 1024) {
+                alert(`${file.name}의 파일 크기가 10MB를 초과합니다. 건너뜁니다.`);
+                continue;
+            }
+            
+            validFiles.push(file);
         }
-        document.getElementById('modalExtractTermsBtn').disabled = true;
+        
+        if (validFiles.length === 0) {
+            return;
+        }
+        
+        // 각 파일을 읽어서 배열에 추가
+        let processedCount = 0;
+        const totalFiles = validFiles.length;
+        
+        validFiles.forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                // 이미지 데이터를 배열에 추가
+                this.modalImages.push({
+                    data: e.target.result,
+                    type: file.type,
+                    file: file,
+                    id: Date.now() + index // 고유 ID 생성
+                });
+                
+                processedCount++;
+                
+                // 모든 파일이 처리되면 UI 업데이트
+                if (processedCount === totalFiles) {
+                    this.updateModalImagePreview();
+                }
+            };
+            reader.onerror = () => {
+                alert(`${file.name}을(를) 읽는 중 오류가 발생했습니다.`);
+                processedCount++;
+                if (processedCount === totalFiles) {
+                    this.updateModalImagePreview();
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    // 모달 내 이미지 미리보기 업데이트
+    updateModalImagePreview() {
+        const previewContainer = document.getElementById('modalImagePreview');
+        const previewGrid = document.getElementById('modalImagePreviewGrid');
+        const uploadAreaContent = document.getElementById('modalUploadAreaContent');
+        const extractBtn = document.getElementById('modalExtractTermsBtn');
+        
+        if (!previewGrid) return;
+        
+        if (this.modalImages.length === 0) {
+            previewContainer.style.display = 'none';
+            if (uploadAreaContent) {
+                uploadAreaContent.style.display = 'flex';
+            }
+            extractBtn.disabled = true;
+            return;
+        }
+        
+        // 업로드 영역의 기본 콘텐츠 숨기기
+        if (uploadAreaContent) {
+            uploadAreaContent.style.display = 'none';
+        }
+        previewContainer.style.display = 'block';
+        extractBtn.disabled = false;
+        
+        // 그리드에 이미지 미리보기 추가
+        previewGrid.innerHTML = '';
+        this.modalImages.forEach((imageObj, index) => {
+            const imageDiv = document.createElement('div');
+            imageDiv.style.cssText = 'position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; border: 1px solid #e0e0e0; background: #f5f5f5;';
+            imageDiv.innerHTML = `
+                <img src="${imageObj.data}" alt="미리보기 ${index + 1}" style="width: 100%; height: 100%; object-fit: contain;">
+                <button type="button" class="btn btn-secondary" style="position: absolute; top: 5px; right: 5px; padding: 4px 8px; font-size: 11px; z-index: 10; background: rgba(255, 255, 255, 0.9); border: 1px solid #ddd;" onclick="event.stopPropagation(); window.glossaryManager && window.glossaryManager.removeModalImageByIndex(${index})">×</button>
+            `;
+            previewGrid.appendChild(imageDiv);
+        });
+    }
+
+    // 모달 내 이미지 제거 (전체)
+    removeModalImage() {
+        this.modalImages = [];
+        this.updateModalImagePreview();
         document.getElementById('modalImageFileInput').value = '';
         document.getElementById('modalExtractedTermsContainer').style.display = 'none';
-        this.modalImageData = null;
-        this.modalImageType = 'image/jpeg';
         this.modalExtractedTerms = [];
     }
+    
+    // 모달 내 특정 인덱스의 이미지 제거
+    removeModalImageByIndex(index) {
+        if (index >= 0 && index < this.modalImages.length) {
+            this.modalImages.splice(index, 1);
+            this.updateModalImagePreview();
+            
+            // 모든 이미지가 제거되면 추출된 용어도 숨기기
+            if (this.modalImages.length === 0) {
+                document.getElementById('modalExtractedTermsContainer').style.display = 'none';
+                this.modalExtractedTerms = [];
+            }
+        }
+    }
 
-    // 모달 내 이미지에서 용어 추출
+    // 모달 내 이미지에서 용어 추출 (여러 이미지 지원)
     async extractTermsFromModalImage() {
-        if (!this.modalImageData) {
+        if (!this.modalImages || this.modalImages.length === 0) {
             alert('이미지를 먼저 업로드해주세요.');
             return;
         }
@@ -2492,15 +2980,11 @@ class GlossaryManager {
 
         // 로딩 표시
         extractBtn.disabled = true;
-        extractBtn.textContent = '추출 중...';
+        extractBtn.textContent = `추출 중... (0/${this.modalImages.length})`;
         container.style.display = 'block';
         table.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">용어를 추출하는 중입니다...</div>';
 
         try {
-            // base64 데이터에서 data URL prefix 제거
-            const base64Data = this.modalImageData.split(',')[1];
-            
-            // Claude Vision API 호출
             let apiUrl = window.getClaudeApiUrl ? window.getClaudeApiUrl() : '/api/claude';
             if (apiUrl.startsWith('/')) {
                 apiUrl = window.location.origin + apiUrl;
@@ -2516,55 +3000,70 @@ class GlossaryManager {
 
 표 형식으로만 출력해주세요. 설명이나 추가 텍스트는 필요 없습니다.`;
 
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    apiKey: apiKey.trim(),
-                    model: 'claude-sonnet-4-5-20250929',
-                    max_tokens: 4000,
-                    temperature: 0.3,
-                    messages: [
-                        {
-                            role: 'user',
-                            content: [
-                                {
-                                    type: 'image',
-                                    source: {
-                                        type: 'base64',
-                                        media_type: this.modalImageType || 'image/jpeg',
-                                        data: base64Data
+            let allTerms = [];
+            
+            // 모든 이미지를 순차적으로 처리
+            for (let i = 0; i < this.modalImages.length; i++) {
+                const imageObj = this.modalImages[i];
+                extractBtn.textContent = `추출 중... (${i + 1}/${this.modalImages.length})`;
+                
+                // base64 데이터에서 data URL prefix 제거
+                const base64Data = imageObj.data.split(',')[1];
+                
+                // Claude Vision API 호출
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        apiKey: apiKey.trim(),
+                        model: 'claude-sonnet-4-5-20250929',
+                        max_tokens: 4000,
+                        temperature: 0.3,
+                        messages: [
+                            {
+                                role: 'user',
+                                content: [
+                                    {
+                                        type: 'image',
+                                        source: {
+                                            type: 'base64',
+                                            media_type: imageObj.type || 'image/jpeg',
+                                            data: base64Data
+                                        }
+                                    },
+                                    {
+                                        type: 'text',
+                                        text: prompt
                                     }
-                                },
-                                {
-                                    type: 'text',
-                                    text: prompt
-                                }
-                            ]
-                        }
-                    ]
-                })
-            });
+                                ]
+                            }
+                        ]
+                    })
+                });
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error?.message || `API 오류: ${response.status}`);
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error(`이미지 ${i + 1} 처리 오류:`, errorData);
+                    continue; // 오류가 발생해도 다음 이미지 계속 처리
+                }
+
+                const data = await response.json();
+                
+                if (!data.content || !data.content[0] || !data.content[0].text) {
+                    console.error(`이미지 ${i + 1} 응답 형식 오류`);
+                    continue;
+                }
+
+                const extractedText = data.content[0].text.trim();
+                
+                // 표 형식 파싱
+                const terms = this.parseExtractedTerms(extractedText);
+                allTerms = allTerms.concat(terms);
             }
-
-            const data = await response.json();
             
-            if (!data.content || !data.content[0] || !data.content[0].text) {
-                throw new Error('API 응답 형식이 올바르지 않습니다.');
-            }
-
-            const extractedText = data.content[0].text.trim();
-            
-            // 표 형식 파싱
-            const terms = this.parseExtractedTerms(extractedText);
-            
-            if (terms.length === 0) {
+            if (allTerms.length === 0) {
                 table.innerHTML = '<div style="padding: 20px; text-align: center; color: #e74c3c;">용어를 추출할 수 없습니다. 이미지를 확인해주세요.</div>';
                 extractBtn.disabled = false;
                 extractBtn.textContent = '용어 추출';
@@ -2572,10 +3071,10 @@ class GlossaryManager {
             }
 
             // 추출된 용어 저장
-            this.modalExtractedTerms = terms;
+            this.modalExtractedTerms = allTerms;
             
             // 테이블 렌더링
-            this.renderModalExtractedTermsTable(terms);
+            this.renderModalExtractedTermsTable(allTerms);
             
             extractBtn.disabled = false;
             extractBtn.textContent = '용어 추출';
@@ -2778,17 +3277,39 @@ class GlossaryManager {
 
 // 페이지 로드 시 초기화
 let glossaryManager;
-function initializeGlossary() {
+async function initializeGlossary() {
     if (!glossaryManager) {
+        // Firebase 초기화 대기
+        try {
+            if (typeof waitForFirebaseSDK === 'function') {
+                await waitForFirebaseSDK();
+            }
+            // FirestoreHelper가 사용 가능할 때까지 대기
+            let attempts = 0;
+            while (typeof window.FirestoreHelper === 'undefined' && attempts < 50) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+        } catch (error) {
+            console.error('Firebase 초기화 대기 실패:', error);
+        }
+        
         glossaryManager = new GlossaryManager();
         window.glossaryManager = glossaryManager;
+        
+        // 초기화 실행
+        if (glossaryManager.init) {
+            await glossaryManager.init();
+        }
     }
 }
 
 // DOMContentLoaded 이벤트가 이미 발생했는지 확인
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeGlossary);
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeGlossary().catch(err => console.error('초기화 실패:', err));
+    });
 } else {
     // 이미 로드되었으면 즉시 초기화
-    initializeGlossary();
+    initializeGlossary().catch(err => console.error('초기화 실패:', err));
 }
