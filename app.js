@@ -3011,42 +3011,70 @@ class GlossaryManager {
                 const base64Data = imageObj.data.split(',')[1];
                 
                 // Claude Vision API 호출
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        apiKey: apiKey.trim(),
-                        model: 'claude-sonnet-4-5-20250929',
-                        max_tokens: 4000,
-                        temperature: 0.3,
-                        messages: [
-                            {
-                                role: 'user',
-                                content: [
-                                    {
-                                        type: 'image',
-                                        source: {
-                                            type: 'base64',
-                                            media_type: imageObj.type || 'image/jpeg',
-                                            data: base64Data
+                let response;
+                try {
+                    response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            apiKey: apiKey.trim(),
+                            model: 'claude-sonnet-4-5-20250929',
+                            max_tokens: 4000,
+                            temperature: 0.3,
+                            messages: [
+                                {
+                                    role: 'user',
+                                    content: [
+                                        {
+                                            type: 'image',
+                                            source: {
+                                                type: 'base64',
+                                                media_type: imageObj.type || 'image/jpeg',
+                                                data: base64Data
+                                            }
+                                        },
+                                        {
+                                            type: 'text',
+                                            text: prompt
                                         }
-                                    },
-                                    {
-                                        type: 'text',
-                                        text: prompt
-                                    }
-                                ]
-                            }
-                        ]
-                    })
-                });
+                                    ]
+                                }
+                            ]
+                        })
+                    });
+                } catch (fetchError) {
+                    console.error(`이미지 ${i + 1} fetch 오류:`, fetchError);
+                    // 네트워크 오류인 경우 계속 진행
+                    if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('NetworkError')) {
+                        continue;
+                    }
+                    throw fetchError;
+                }
 
                 if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    console.error(`이미지 ${i + 1} 처리 오류:`, errorData);
-                    continue; // 오류가 발생해도 다음 이미지 계속 처리
+                    let errorData;
+                    try {
+                        const errorText = await response.text();
+                        errorData = JSON.parse(errorText);
+                    } catch (e) {
+                        errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+                    }
+                    
+                    console.error(`이미지 ${i + 1} 처리 오류:`, {
+                        status: response.status,
+                        statusText: response.statusText,
+                        error: errorData
+                    });
+                    
+                    // 403 오류인 경우 특별 처리
+                    if (response.status === 403) {
+                        const errorMessage = errorData.error || errorData.message || 'Request not allowed';
+                        throw new Error(`API 접근이 거부되었습니다 (403). ${errorMessage}\n\n가능한 원인:\n1. Cloudflare Workers 보안 정책에 의해 차단됨\n2. API 키가 유효하지 않음\n3. 요청 크기가 너무 큼`);
+                    }
+                    
+                    continue; // 다른 오류는 다음 이미지 계속 처리
                 }
 
                 const data = await response.json();
