@@ -277,7 +277,7 @@ class MeetingManager {
                         </div>
                     </div>
                     <div class="meeting-item-content">
-                        <div style="margin-bottom: 8px;"><strong>담당자:</strong> ${this.escapeHtml(meeting.assignee)}</div>
+                        <div style="margin-bottom: 8px;"><strong>담당자:</strong> ${Array.isArray(meeting.assignee) ? meeting.assignee.map(a => `<span class="meeting-tag">${this.escapeHtml(a)}</span>`).join('') : `<span class="meeting-tag">${this.escapeHtml(meeting.assignee)}</span>`}</div>
                         <div style="margin-bottom: 8px;"><strong>참석자:</strong> ${attendeesHtml}</div>
                         <div>${this.escapeHtml(meeting.content.substring(0, 150))}${meeting.content.length > 150 ? '...' : ''}</div>
                     </div>
@@ -314,8 +314,6 @@ class MeetingManager {
         this.populateCategoryOptions();
         // 담당자 옵션 채우기
         this.populateAssigneeOptions();
-        // 참석자 옵션 채우기
-        this.populateAttendeeOptions();
 
         if (modal) modal.classList.add('active');
     }
@@ -342,23 +340,35 @@ class MeetingManager {
 
         document.getElementById('meetingDateTime').value = dateTimeValue;
         document.getElementById('meetingCategory').value = meeting.category || '';
-        document.getElementById('meetingAssignee').value = meeting.assignee || '';
         document.getElementById('meetingTitle').value = meeting.title || '';
         document.getElementById('meetingContent').value = meeting.content || '';
         document.getElementById('meetingNotes').value = meeting.notes || '';
 
-        // 참석자 선택
-        const attendeesSelect = document.getElementById('meetingAttendees');
-        if (attendeesSelect && meeting.attendees) {
-            Array.from(attendeesSelect.options).forEach(option => {
-                option.selected = meeting.attendees.includes(option.value);
+        // 담당자 선택 (다중 선택)
+        const assigneeSelect = document.getElementById('meetingAssignee');
+        if (assigneeSelect) {
+            Array.from(assigneeSelect.options).forEach(option => {
+                if (Array.isArray(meeting.assignee)) {
+                    option.selected = meeting.assignee.includes(option.value);
+                } else if (meeting.assignee) {
+                    option.selected = option.value === meeting.assignee;
+                }
             });
+        }
+
+        // 참석자 입력 (텍스트)
+        const attendeesInput = document.getElementById('meetingAttendees');
+        if (attendeesInput && meeting.attendees) {
+            if (Array.isArray(meeting.attendees)) {
+                attendeesInput.value = meeting.attendees.join(', ');
+            } else if (typeof meeting.attendees === 'string') {
+                attendeesInput.value = meeting.attendees;
+            }
         }
 
         // 옵션 채우기
         this.populateCategoryOptions();
         this.populateAssigneeOptions();
-        this.populateAttendeeOptions();
 
         if (modal) modal.classList.add('active');
     }
@@ -391,32 +401,24 @@ class MeetingManager {
         });
     }
 
-    // 참석자 옵션 채우기 (담당자 목록과 동일)
-    populateAttendeeOptions() {
-        const attendeesSelect = document.getElementById('meetingAttendees');
-        if (!attendeesSelect) return;
-
-        attendeesSelect.innerHTML = '<option value="">선택하세요</option>';
-        this.assignees.forEach(assignee => {
-            const option = document.createElement('option');
-            option.value = assignee;
-            option.textContent = assignee;
-            attendeesSelect.appendChild(option);
-        });
-    }
 
     // 회의 기록 저장
     async saveMeeting() {
         const dateTime = document.getElementById('meetingDateTime').value;
         const category = document.getElementById('meetingCategory').value;
-        const assignee = document.getElementById('meetingAssignee').value;
+        const assigneeSelect = document.getElementById('meetingAssignee');
+        const assignees = Array.from(assigneeSelect.selectedOptions).map(opt => opt.value).filter(v => v);
         const title = document.getElementById('meetingTitle').value;
         const content = document.getElementById('meetingContent').value;
         const notes = document.getElementById('meetingNotes').value;
-        const attendeesSelect = document.getElementById('meetingAttendees');
-        const attendees = Array.from(attendeesSelect.selectedOptions).map(opt => opt.value).filter(v => v);
+        const attendeesInput = document.getElementById('meetingAttendees').value;
+        
+        // 참석자 텍스트를 배열로 변환 (쉼표로 구분)
+        const attendees = attendeesInput
+            ? attendeesInput.split(',').map(a => a.trim()).filter(a => a)
+            : [];
 
-        if (!dateTime || !category || !assignee || !title || !content) {
+        if (!dateTime || !category || assignees.length === 0 || !title || !content) {
             alert('필수 항목을 모두 입력해주세요.');
             return;
         }
@@ -425,7 +427,7 @@ class MeetingManager {
             id: this.editingId || Date.now().toString(),
             dateTime: dateTime,
             category: category,
-            assignee: assignee,
+            assignee: assignees, // 배열로 저장
             title: title,
             content: content,
             notes: notes || '',
@@ -489,7 +491,7 @@ class MeetingManager {
                 <div style="margin-bottom: 20px;">
                     <div style="margin-bottom: 10px;"><strong>일시:</strong> ${formattedDate}</div>
                     <div style="margin-bottom: 10px;"><strong>카테고리:</strong> ${this.escapeHtml(meeting.category)}</div>
-                    <div style="margin-bottom: 10px;"><strong>담당자:</strong> ${this.escapeHtml(meeting.assignee)}</div>
+                    <div style="margin-bottom: 10px;"><strong>담당자:</strong> ${Array.isArray(meeting.assignee) ? meeting.assignee.map(a => `<span class="meeting-tag">${this.escapeHtml(a)}</span>`).join('') : `<span class="meeting-tag">${this.escapeHtml(meeting.assignee)}</span>`}</div>
                     <div style="margin-bottom: 10px;"><strong>참석자:</strong> ${attendeesHtml}</div>
                 </div>
                 <div style="margin-bottom: 20px;">
