@@ -97,6 +97,11 @@ class CorpusManager {
                         const count = this.data.filter(item => item.fileGroupId === fileGroup.id).length;
                         fileGroup.itemCount = count;
                     });
+                    // 파일 그룹이 있으면 자동으로 "전체" 폴더 펼치기
+                    if (this.fileGroups.length > 0) {
+                        this.isAllExpanded = true;
+                        this.selectedFolderId = null;
+                    }
                     // LocalStorage에도 백업 저장
                     localStorage.setItem('corpusFileGroups', JSON.stringify(this.fileGroups));
                     // Firestore에도 저장
@@ -128,6 +133,11 @@ class CorpusManager {
                     const count = this.data.filter(item => item.fileGroupId === fileGroup.id).length;
                     fileGroup.itemCount = count;
                 });
+                // 파일 그룹이 있으면 자동으로 "전체" 폴더 펼치기
+                if (this.fileGroups.length > 0) {
+                    this.isAllExpanded = true;
+                    this.selectedFolderId = null;
+                }
             } catch (e) {
                 console.error('파일 그룹 로드 오류:', e);
                 this.fileGroups = [];
