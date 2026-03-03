@@ -1,7 +1,7 @@
 /* KRAFTON 폰트 적용 */
 @font-face {
     font-family: 'KraftonFont';
-    src: url('font/KRAFTON_FONTWindow.ttf') format('truetype');
+    src: url('font/KRAFTON%20Headline.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
 }
