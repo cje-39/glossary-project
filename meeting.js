@@ -224,7 +224,7 @@ class MeetingManager {
             });
             
             label.appendChild(checkbox);
-            label.appendChild(document.createTextNode(category));
+            label.appendChild(document.createTextNode(category.replace(/^#/, '')));
             filterContainer.appendChild(label);
         });
     }
@@ -272,7 +272,7 @@ class MeetingManager {
                     <div class="meeting-item-header">
                         <div class="meeting-item-title">${this.escapeHtml(meeting.title)}</div>
                         <div class="meeting-item-meta">
-                            <span>${this.escapeHtml(meeting.category)}</span>
+                            <span>${this.escapeHtml(meeting.category.replace(/^#/, ''))}</span>
                             <span>${formattedDate}</span>
                         </div>
                     </div>
@@ -389,7 +389,7 @@ class MeetingManager {
         this.categories.forEach(category => {
             const option = document.createElement('option');
             option.value = category;
-            option.textContent = category;
+            option.textContent = category.replace(/^#/, '');
             categorySelect.appendChild(option);
         });
     }
@@ -541,7 +541,7 @@ class MeetingManager {
             detailContent.innerHTML = `
                 <div style="margin-bottom: 20px;">
                     <div style="margin-bottom: 10px;"><strong>일시:</strong> ${formattedDate}</div>
-                    <div style="margin-bottom: 10px;"><strong>카테고리:</strong> ${this.escapeHtml(meeting.category)}</div>
+                    <div style="margin-bottom: 10px;"><strong>카테고리:</strong> ${this.escapeHtml(meeting.category.replace(/^#/, ''))}</div>
                     <div style="margin-bottom: 10px;"><strong>담당자:</strong> ${Array.isArray(meeting.assignee) ? meeting.assignee.map(a => `<span class="meeting-tag">${this.escapeHtml(a)}</span>`).join('') : `<span class="meeting-tag">${this.escapeHtml(meeting.assignee)}</span>`}</div>
                     <div style="margin-bottom: 10px;"><strong>참석자:</strong> ${attendeesHtml}</div>
                 </div>

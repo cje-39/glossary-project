@@ -1646,7 +1646,7 @@ class CorpusManager {
             
             const label = document.createElement('label');
             label.htmlFor = `glossaryCategory_${category}`;
-            label.textContent = category;
+            label.textContent = category.replace(/^#/, '');
             label.style.cssText = 'cursor: pointer; font-size: 14px; color: #333;';
             
             checkboxDiv.appendChild(checkbox);
