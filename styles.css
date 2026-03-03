@@ -207,7 +207,7 @@ header h1::after {
 
 .search-input-main:focus {
     outline: none;
-    border-color: #f9423a;
+    border-color: #2b68dc;
     box-shadow: 0 0 0 3px rgba(30, 107, 58, 0.2);
 }
 
@@ -420,7 +420,7 @@ header h1::after {
 
 
 .btn-back-arrow {
-    background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%);
+    background: linear-gradient(135deg, #2b68dc 0%, #2b68dc 100%);
     border: 1px solid #2b68dc;
     font-size: 14px;
     color: #ffffff;
@@ -440,9 +440,9 @@ header h1::after {
 }
 
 .btn-back-arrow:hover {
-    background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%);
+    background: linear-gradient(135deg, #2b68dc 0%, #2b68dc 100%);
     color: #ffffff;
-    border-color: #f9423a;
+    border-color: #2b68dc;
     box-shadow: 0 4px 12px rgba(13, 74, 31, 0.5), 0 2px 6px rgba(13, 74, 31, 0.4);
     transform: translateX(-2px);
 }
@@ -496,7 +496,7 @@ header h1::after {
 
 .sort-select:focus {
     outline: none;
-    border-color: #f9423a;
+    border-color: #2b68dc;
     box-shadow: 0 0 0 3px rgba(30, 107, 58, 0.2);
 }
 
@@ -517,7 +517,7 @@ header h1::after {
 
 .search-input:focus {
     outline: none;
-    border-color: #f9423a;
+    border-color: #2b68dc;
     box-shadow: 0 0 0 3px rgba(30, 107, 58, 0.2);
 }
 
@@ -533,27 +533,27 @@ header h1::after {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%);
+    background: linear-gradient(135deg, #2b68dc 0%, #2b68dc 100%);
     color: #ffffff;
-    box-shadow: 0 2px 8px rgba(249, 66, 58, 0.3);
+    box-shadow: 0 2px 8px rgba(43, 104, 220, 0.3);
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%);
+    background: linear-gradient(135deg, #2b68dc 0%, #2b68dc 100%);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(249, 66, 58, 0.5);
+    box-shadow: 0 4px 12px rgba(43, 104, 220, 0.5);
 }
 
 .btn-secondary {
-    background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%);
+    background: linear-gradient(135deg, #2b68dc 0%, #2b68dc 100%);
     color: #ffffff;
-    box-shadow: 0 2px 8px rgba(249, 66, 58, 0.3);
+    box-shadow: 0 2px 8px rgba(43, 104, 220, 0.3);
 }
 
 .btn-secondary:hover {
-    background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%);
+    background: linear-gradient(135deg, #2b68dc 0%, #2b68dc 100%);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(249, 66, 58, 0.5);
+    box-shadow: 0 4px 12px rgba(43, 104, 220, 0.5);
 }
 
 .btn-edit {
@@ -667,7 +667,7 @@ header h1::after {
 }
 
 .glossary-table mark {
-    background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%);
+    background: linear-gradient(135deg, #2b68dc 0%, #2b68dc 100%);
     color: #ffffff;
     padding: 2px 4px;
     border-radius: 3px;
@@ -750,7 +750,7 @@ header h1::after {
     align-items: center;
     padding: 20px 24px;
     border-bottom: 2px solid #e0e0e0;
-    background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%);
+    background: linear-gradient(135deg, #2b68dc 0%, #2b68dc 100%);
     border-radius: 12px 12px 0 0;
 }
 
@@ -819,7 +819,7 @@ header h1::after {
 .form-group input:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: #f9423a;
+    border-color: #2b68dc;
     box-shadow: 0 0 0 3px rgba(30, 107, 58, 0.2);
 }
 
@@ -904,7 +904,7 @@ header h1::after {
 
 .category-checkbox-label:hover {
     background: #f8f9fa;
-    border-color: #f9423a;
+    border-color: #2b68dc;
 }
 
 .category-checkbox-label input[type="checkbox"] {
@@ -912,19 +912,19 @@ header h1::after {
     width: 18px;
     height: 18px;
     margin: 0;
-    accent-color: #f9423a;
+    accent-color: #2b68dc;
     flex-shrink: 0;
 }
 
 .category-checkbox-label input[type="checkbox"]:checked + span {
-    color: #f9423a;
+    color: #2b68dc;
     font-weight: 500;
 }
 
 .category-checkbox-label:has(input[type="checkbox"]:checked),
 .category-checkbox-label.checked {
     background: #f0f4ff;
-    border-color: #f9423a;
+    border-color: #2b68dc;
 }
 
 .category-checkbox-label span {
@@ -1117,7 +1117,7 @@ body {
 }
 
 .notification-bell:hover svg {
-    color: #f9423a;
+    color: #2b68dc;
     transform: scale(1.1);
 }
 
@@ -1208,14 +1208,14 @@ body {
 }
 
 .btn-register-term {
-    background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%);
+    background: linear-gradient(135deg, #2b68dc 0%, #2b68dc 100%);
     color: white;
 }
 
 .btn-register-term:hover {
     background: linear-gradient(135deg, #1e4fa3 0%, #1e4fa3 100%);
     transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(249, 66, 58, 0.3);
+    box-shadow: 0 2px 4px rgba(43, 104, 220, 0.3);
 }
 
 .btn-ignore-term {

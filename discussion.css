@@ -436,7 +436,7 @@
 
 .btn-edit-post:hover {
     background: #f0f0f0;
-    color: #f9423a;
+    color: #2b68dc;
 }
 
 .btn-delete-post {
@@ -598,7 +598,7 @@
 .modal-body .form-group select:focus,
 .modal-body .form-group textarea:focus {
     outline: none;
-    border-color: #f9423a;
+    border-color: #2b68dc;
     box-shadow: 0 0 0 3px rgba(13, 74, 31, 0.2);
 }
 
@@ -627,12 +627,12 @@
 
 /* 작성자 드롭다운 스타일 */
 .author-dropdown-toggle:hover {
-    border-color: #f9423a;
+    border-color: #2b68dc;
 }
 
 .author-dropdown-toggle:focus {
     outline: none;
-    border-color: #f9423a;
+    border-color: #2b68dc;
     box-shadow: 0 0 0 3px rgba(13, 74, 31, 0.2);
 }
 
