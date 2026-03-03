@@ -60,6 +60,11 @@
     margin-right: auto;
 }
 
+/* 5개 카드일 때 마지막 줄 가운데 정렬 */
+.hub-nav > .nav-card:nth-child(5) {
+    grid-column: 2;
+}
+
 .nav-card {
     background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 50%, #2a2a2a 100%);
     border-radius: 12px;
@@ -152,6 +157,13 @@
     .hub-nav {
         grid-template-columns: repeat(2, 1fr);
         max-width: 800px;
+    }
+    
+    /* 2열일 때 5번째 카드 가운데 정렬 */
+    .hub-nav > .nav-card:nth-child(5) {
+        grid-column: 1 / -1;
+        justify-self: center;
+        max-width: calc(50% - 15px);
     }
 }
 
