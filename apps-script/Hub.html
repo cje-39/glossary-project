@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>east translation team Language Resource Hub</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+    <?!= getStyles(); ?>
+</head>
+<body>
+    <div class="hub-container" id="hubContent">
+        <header class="hub-header">
+            <h1>east translation team Language Resource Hub</h1>
+            <p class="hub-subtitle">언어 자산 통합 관리 페이지</p>
+        </header>
+
+        <nav class="hub-nav">
+            <a href="?page=glossary" class="nav-card">
+                <div class="nav-icon">📝</div>
+                <h2>Glossary</h2>
+                <p>팀 용어집</p>
+                <span class="nav-arrow">→</span>
+            </a>
+            <a href="?page=corpus" class="nav-card">
+                <div class="nav-icon">📖</div>
+                <h2>Parallel Corpus</h2>
+                <p>병렬 코퍼스</p>
+                <span class="nav-arrow">→</span>
+            </a>
+            <a href="?page=discussion" class="nav-card">
+                <div class="nav-icon">💬</div>
+                <h2>Term Discussion</h2>
+                <p>용어 토론</p>
+                <span class="nav-arrow">→</span>
+            </a>
+            <a href="?page=review" class="nav-card">
+                <div class="nav-icon">✓</div>
+                <h2>Translation Review</h2>
+                <p>번역물 리뷰</p>
+                <span class="nav-arrow">→</span>
+            </a>
+            <a href="?page=meeting" class="nav-card">
+                <div class="nav-icon">📋</div>
+                <h2>Meeting Notes</h2>
+                <p>회의 기록</p>
+                <span class="nav-arrow">→</span>
+            </a>
+        </nav>
+
+        <footer class="hub-footer">
+            <p>KRAFTON HQ East translation team © 2026</p>
+        </footer>
+    </div>
+
+    <!-- ClientService 스크립트 -->
+    <script>
+    <?!= HtmlService.createHtmlOutputFromFile('ClientService').getContent(); ?>
+    </script>
+    
+    <script>
+    // Hub 페이지 초기화
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Hub 페이지 로드 완료');
+        // 필요시 추가 초기화 코드
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meeting Notes - 회의 기록</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .meeting-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .meeting-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .meeting-header h1 {
+            font-family: 'KraftonFont', 'Pretendard', 'Nanum Gothic', 나눔고딕, sans-serif;
+            font-size: 1.76em;
+            color: #1a1a1a;
+            margin: 0;
+        }
+
+        .meeting-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .meeting-list {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .meeting-item {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .meeting-item:hover {
+            background-color: #f5f5f5;
+        }
+
+        .meeting-item:last-child {
+            border-bottom: none;
+        }
+
+        .meeting-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .meeting-item-title {
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #1a1a1a;
+        }
+
+        .meeting-item-date {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .meeting-item-summary {
+            color: #666;
+            font-size: 0.95em;
+            margin-top: 5px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h1 style="margin: 0;">Meeting Notes</h1>
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <a href="hub.html" class="btn btn-primary" style="text-decoration: none; display: inline-block; padding: 8px 16px; font-size: 13px;">← Main page</a>
+                </div>
+            </div>
+        </header>
+
+        <div class="meeting-container">
+            <div class="meeting-header">
+                <h1>회의 기록</h1>
+                <div class="meeting-controls">
+                    <button id="newMeetingBtn" class="btn btn-primary">새 회의 기록</button>
+                </div>
+            </div>
+
+            <div class="meeting-list" id="meetingList">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📋</div>
+                    <p>아직 등록된 회의 기록이 없습니다.</p>
+                    <p style="margin-top: 10px; font-size: 0.9em;">새 회의 기록 버튼을 클릭하여 첫 회의를 등록하세요.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK v8 -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="firebase-init.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        // 회의 기록 관리 클래스
+        class MeetingManager {
+            constructor() {
+                this.meetings = [];
+                this.init();
+            }
+
+            async init() {
+                await this.loadMeetings();
+                this.setupEventListeners();
+                this.renderMeetings();
+            }
+
+            setupEventListeners() {
+                const newMeetingBtn = document.getElementById('newMeetingBtn');
+                if (newMeetingBtn) {
+                    newMeetingBtn.addEventListener('click', () => {
+                        this.showNewMeetingModal();
+                    });
+                }
+            }
+
+            async loadMeetings() {
+                try {
+                    if (window.FirestoreHelper) {
+                        const data = await FirestoreHelper.load('meetings', 'notes');
+                        this.meetings = data.meetings || [];
+                    } else {
+                        const savedData = localStorage.getItem('meetingNotes');
+                        if (savedData) {
+                            this.meetings = JSON.parse(savedData);
+                        }
+                    }
+                } catch (error) {
+                    console.error('회의 기록 로드 실패:', error);
+                    this.meetings = [];
+                }
+            }
+
+            async saveMeetings() {
+                try {
+                    localStorage.setItem('meetingNotes', JSON.stringify(this.meetings));
+                    if (window.FirestoreHelper) {
+                        await FirestoreHelper.save('meetings', 'notes', { meetings: this.meetings });
+                    }
+                } catch (error) {
+                    console.error('회의 기록 저장 실패:', error);
+                    alert('회의 기록 저장에 실패했습니다.');
+                }
+            }
+
+            renderMeetings() {
+                const meetingList = document.getElementById('meetingList');
+                if (!meetingList) return;
+
+                if (this.meetings.length === 0) {
+                    meetingList.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📋</div>
+                            <p>아직 등록된 회의 기록이 없습니다.</p>
+                            <p style="margin-top: 10px; font-size: 0.9em;">새 회의 기록 버튼을 클릭하여 첫 회의를 등록하세요.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const html = this.meetings.map((meeting, index) => `
+                    <div class="meeting-item" onclick="window.meetingManager.openMeeting(${index})">
+                        <div class="meeting-item-header">
+                            <div class="meeting-item-title">${this.escapeHtml(meeting.title || '제목 없음')}</div>
+                            <div class="meeting-item-date">${this.formatDate(meeting.date)}</div>
+                        </div>
+                        <div class="meeting-item-summary">${this.escapeHtml(meeting.summary || '요약 없음')}</div>
+                    </div>
+                `).join('');
+
+                meetingList.innerHTML = html;
+            }
+
+            showNewMeetingModal() {
+                const title = prompt('회의 제목을 입력하세요:');
+                if (!title) return;
+
+                const date = prompt('회의 날짜를 입력하세요 (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+                if (!date) return;
+
+                const summary = prompt('회의 요약을 입력하세요:') || '';
+
+                const newMeeting = {
+                    id: Date.now().toString(),
+                    title: title,
+                    date: date,
+                    summary: summary,
+                    content: '',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+
+                this.meetings.unshift(newMeeting);
+                this.saveMeetings();
+                this.renderMeetings();
+            }
+
+            openMeeting(index) {
+                const meeting = this.meetings[index];
+                if (!meeting) return;
+
+                // 간단한 모달로 회의 내용 표시
+                const content = prompt('회의 내용을 입력하세요:', meeting.content || '');
+                if (content !== null) {
+                    meeting.content = content;
+                    meeting.updatedAt = new Date().toISOString();
+                    this.saveMeetings();
+                    this.renderMeetings();
+                }
+            }
+
+            formatDate(dateString) {
+                if (!dateString) return '';
+                const date = new Date(dateString);
+                return date.toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            window.meetingManager = new MeetingManager();
+        });
+    </script>
+</body>
+</html>
