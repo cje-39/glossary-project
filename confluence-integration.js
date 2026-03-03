@@ -5,10 +5,13 @@ class ConfluenceIntegration {
         this.apiToken = null;
         this.email = null; // Confluence 계정 이메일
         this.monitoredPages = [];
-        this.checkInterval = 60 * 60 * 1000; // 기본 1시간
+        this.checkInterval = 24 * 60 * 60 * 1000; // 기본 24시간 (하루)
         this.checkTimer = null;
         this.lastCheckTime = null;
+        this.lastPageCheckTime = null; // 신규 페이지 체크 시간
+        this.parentPageId = '686854573'; // ADK Meeting Hub 페이지 ID
         this.initialized = false;
+        this.autoCheckEnabled = true; // 자동 가져오기 활성화 여부 (기본값: 활성화)
     }
     
     async initialize() {
@@ -28,6 +31,7 @@ class ConfluenceIntegration {
                     this.monitoredPages = settings.monitoredPages || [];
                     this.checkInterval = settings.checkInterval || this.checkInterval;
                     this.lastCheckTime = settings.lastCheckTime || null;
+                    this.autoCheckEnabled = settings.autoCheckEnabled !== undefined ? settings.autoCheckEnabled : true;
                 }
             } else {
                 // LocalStorage 폴백
@@ -39,6 +43,8 @@ class ConfluenceIntegration {
                     this.monitoredPages = settings.monitoredPages || [];
                     this.checkInterval = settings.checkInterval || this.checkInterval;
                     this.lastCheckTime = settings.lastCheckTime || null;
+                    this.lastPageCheckTime = settings.lastPageCheckTime || null;
+                    this.autoCheckEnabled = settings.autoCheckEnabled !== undefined ? settings.autoCheckEnabled : true;
                 }
             }
         } catch (error) {
@@ -53,7 +59,9 @@ class ConfluenceIntegration {
             email: this.email,
             monitoredPages: this.monitoredPages,
             checkInterval: this.checkInterval,
-            lastCheckTime: this.lastCheckTime
+            lastCheckTime: this.lastCheckTime,
+            lastPageCheckTime: this.lastPageCheckTime,
+            autoCheckEnabled: this.autoCheckEnabled
         };
 
         try {
@@ -321,10 +329,11 @@ class ConfluenceIntegration {
                 const result = await this.checkPage(pageUrl);
                 results.push(result);
 
-                // 새 용어가 있으면 알림 생성
-                if (result.newTerms && result.newTerms.length > 0) {
-                    await this.createNotifications(result);
-                }
+                // 자동 체크 기능 제거됨 - 알림 생성하지 않음
+                // 수동으로 가져올 때는 알림이 필요 없음
+                // if (result.newTerms && result.newTerms.length > 0) {
+                //     await this.createNotifications(result);
+                // }
             } catch (error) {
                 console.error(`페이지 체크 실패 (${pageUrl}):`, error);
                 results.push({
@@ -360,23 +369,337 @@ class ConfluenceIntegration {
         }
     }
 
-    // 주기적 체크 시작
-    startPeriodicCheck() {
-        if (this.checkTimer) {
-            clearInterval(this.checkTimer);
+    // 신규 페이지 체크 (ADK Meeting Hub 하위 페이지)
+    async checkNewPages() {
+        if (!this.apiToken || !this.email) {
+            console.log('API Token 또는 이메일이 설정되지 않았습니다.');
+            return [];
         }
 
-        // 즉시 한 번 체크
-        this.checkAllPages().catch(error => {
-            console.error('초기 페이지 체크 실패:', error);
+        try {
+            // Cloudflare Workers를 통해 호출
+            let apiUrl;
+            if (typeof window !== 'undefined' && window.getConfluenceApiUrl) {
+                apiUrl = window.getConfluenceApiUrl();
+            } else {
+                apiUrl = '/api/confluence';
+            }
+
+            // 하위 페이지 목록 가져오기
+            const url = `${apiUrl}?pageId=${encodeURIComponent(this.parentPageId)}&apiToken=${encodeURIComponent(this.apiToken)}&email=${encodeURIComponent(this.email)}&action=children&limit=20`;
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`API 요청 실패: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const pages = data.results || [];
+
+            // 마지막 체크 이후 생성된 페이지 필터링
+            const lastCheck = this.lastPageCheckTime ? new Date(this.lastPageCheckTime) : new Date(0);
+            const newPages = pages.filter(page => {
+                const pageDate = new Date(page.version.when);
+                return pageDate > lastCheck;
+            });
+
+            // 마지막 체크 시간 업데이트
+            if (pages.length > 0) {
+                this.lastPageCheckTime = new Date().toISOString();
+                await this.saveSettings();
+            }
+
+            return newPages;
+        } catch (error) {
+            console.error('신규 페이지 체크 실패:', error);
+            throw error;
+        }
+    }
+
+    // 알림 패널 표시 (옵션 2)
+    showNewPagesNotification(newPages) {
+        // 기존 알림 패널이 있으면 제거
+        const existingPanel = document.getElementById('newPagesNotificationPanel');
+        if (existingPanel) {
+            existingPanel.remove();
+        }
+
+        // 알림 패널 생성
+        const panel = document.createElement('div');
+        panel.id = 'newPagesNotificationPanel';
+        panel.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 400px;
+            max-width: 90vw;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            border: 2px solid #4a90e2;
+            z-index: 10000;
+            font-family: 'Pretendard', 'Nanum Gothic', sans-serif;
+        `;
+
+        const pagesList = newPages.map(page => {
+            const date = new Date(page.version.when);
+            const dateStr = date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+            return `- ${dateStr} ${page.title}`;
+        }).join('\n');
+
+        panel.innerHTML = `
+            <div style="padding: 20px; border-bottom: 1px solid #e0e0e0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0; font-size: 18px; color: #333; display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 24px;">📢</span>
+                        신규 회의록 발견!
+                    </h3>
+                    <button id="closeNotificationBtn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #999; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">&times;</button>
+                </div>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; font-size: 14px; color: #333; white-space: pre-line; line-height: 1.8; max-height: 300px; overflow-y: auto;">
+${pagesList}
+                </div>
+            </div>
+            <div style="padding: 15px; display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="laterNotificationBtn" style="padding: 10px 20px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; font-size: 14px; color: #666;">나중에</button>
+                <button id="extractTermsBtn" style="padding: 10px 20px; background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; box-shadow: 0 2px 4px rgba(74, 144, 226, 0.3);">용어 추출하기</button>
+            </div>
+        `;
+
+        document.body.appendChild(panel);
+
+        // 닫기 버튼
+        panel.querySelector('#closeNotificationBtn').addEventListener('click', () => {
+            panel.remove();
         });
 
-        // 주기적 체크
-        this.checkTimer = setInterval(() => {
-            this.checkAllPages().catch(error => {
-                console.error('주기적 페이지 체크 실패:', error);
+        // 나중에 버튼
+        panel.querySelector('#laterNotificationBtn').addEventListener('click', () => {
+            panel.remove();
+        });
+
+        // 용어 추출하기 버튼
+        panel.querySelector('#extractTermsBtn').addEventListener('click', async () => {
+            panel.remove();
+            await this.extractTermsFromNewPages(newPages);
+        });
+    }
+
+    // 신규 페이지에서 용어 추출
+    async extractTermsFromNewPages(newPages) {
+        if (!window.glossaryManager) {
+            alert('GlossaryManager가 로드되지 않았습니다.');
+            return;
+        }
+
+        try {
+            // 로딩 표시
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = 'extractingTermsLoading';
+            loadingDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                padding: 30px;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+                z-index: 10001;
+                text-align: center;
+            `;
+            loadingDiv.innerHTML = `
+                <div style="font-size: 16px; color: #333; margin-bottom: 15px;">용어를 추출하는 중...</div>
+                <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #4a90e2; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+            `;
+            document.body.appendChild(loadingDiv);
+
+            let allNewTerms = [];
+            for (const page of newPages) {
+                try {
+                    const pageUrl = `${this.baseURL}/wiki/spaces/EASTTRANS/pages/${page.id}`;
+                    const result = await this.checkPage(pageUrl);
+                    if (result.newTerms && result.newTerms.length > 0) {
+                        allNewTerms = allNewTerms.concat(result.newTerms);
+                    }
+                } catch (error) {
+                    console.error(`페이지 ${page.title}에서 용어 추출 실패:`, error);
+                }
+            }
+
+            loadingDiv.remove();
+
+            if (allNewTerms.length === 0) {
+                alert('새로운 용어가 없습니다.');
+                return;
+            }
+
+            // 카테고리 선택 모달 표시
+            const category = await this.selectCategory();
+            if (!category) {
+                return;
+            }
+
+            // 용어 추가
+            let addedCount = 0;
+            for (const term of allNewTerms) {
+                try {
+                    const manager = window.glossaryManager;
+                    const korean = term.korean.trim();
+                    const japanese = term.japanese.trim();
+
+                    if (!korean || !japanese) continue;
+
+                    // 중복 체크
+                    const isDuplicate = manager.terms.some(t => 
+                        t.korean === korean && t.japanese === japanese
+                    );
+
+                    if (isDuplicate) continue;
+
+                    // 새 ID 생성
+                    let newId = 1;
+                    if (manager.terms.length > 0) {
+                        const maxId = Math.max(...manager.terms.map(t => t.id || 0));
+                        newId = maxId >= 1 ? maxId + 1 : 1;
+                    }
+
+                    manager.terms.push({
+                        id: newId,
+                        korean,
+                        japanese,
+                        category: [category],
+                        notes: 'Confluence 회의록에서 자동 추출',
+                        updatedAt: new Date().toISOString()
+                    });
+
+                    addedCount++;
+                } catch (error) {
+                    console.error('용어 추가 실패:', term, error);
+                }
+            }
+
+            if (addedCount > 0) {
+                await window.glossaryManager.saveData();
+                alert(`${addedCount}개의 용어가 성공적으로 추가되었습니다.`);
+                
+                // 메인 페이지로 리다이렉트
+                if (window.location.pathname !== '/index.html' && window.location.pathname !== '/') {
+                    window.location.href = 'index.html';
+                } else {
+                    // 페이지 새로고침
+                    window.location.reload();
+                }
+            } else {
+                alert('추가할 새로운 용어가 없습니다.');
+            }
+        } catch (error) {
+            console.error('용어 추출 실패:', error);
+            alert('용어 추출 중 오류가 발생했습니다: ' + error.message);
+        }
+    }
+
+    // 카테고리 선택 모달
+    async selectCategory() {
+        return new Promise((resolve) => {
+            if (!window.glossaryManager || !window.glossaryManager.categories || window.glossaryManager.categories.length === 0) {
+                resolve(null);
+                return;
+            }
+
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10002;
+            `;
+
+            modal.innerHTML = `
+                <div style="background: white; padding: 30px; border-radius: 12px; max-width: 400px; width: 90%;">
+                    <h3 style="margin: 0 0 20px 0; font-size: 18px; color: #333;">카테고리 선택</h3>
+                    <div id="categorySelectRadio" style="margin-bottom: 20px;"></div>
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        <button id="modalCancelBtn" style="padding: 10px 20px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 6px; cursor: pointer;">취소</button>
+                        <button id="modalConfirmBtn" style="padding: 10px 20px; background: #4a90e2; color: white; border: none; border-radius: 6px; cursor: pointer;">확인</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            const radioContainer = modal.querySelector('#categorySelectRadio');
+            window.glossaryManager.categories.forEach(cat => {
+                const radioDiv = document.createElement('div');
+                radioDiv.style.cssText = 'margin-bottom: 10px;';
+                radioDiv.innerHTML = `
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="radio" name="selectCategory" value="${cat}" style="margin-right: 8px;">
+                        <span>${cat}</span>
+                    </label>
+                `;
+                radioContainer.appendChild(radioDiv);
             });
-        }, this.checkInterval);
+
+            const closeModal = () => {
+                document.body.removeChild(modal);
+                resolve(null);
+            };
+
+            modal.querySelector('#modalCancelBtn').addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+
+            modal.querySelector('#modalConfirmBtn').addEventListener('click', () => {
+                const selected = modal.querySelector('input[name="selectCategory"]:checked');
+                const category = selected ? selected.value : null;
+                document.body.removeChild(modal);
+                resolve(category);
+            });
+        });
+    }
+
+    // 주기적 체크 시작 (신규 페이지 체크만)
+    startPeriodicCheck() {
+        // 자동 가져오기가 비활성화되어 있으면 시작하지 않음
+        if (!this.autoCheckEnabled) {
+            console.log('자동 가져오기가 비활성화되어 있습니다.');
+            return;
+        }
+
+        // 기존 타이머가 있으면 중지
+        if (this.checkTimer) {
+            clearInterval(this.checkTimer);
+            this.checkTimer = null;
+        }
+
+        // 신규 페이지 체크만 주기적으로 실행
+        const checkNewPagesPeriodically = async () => {
+            try {
+                const newPages = await this.checkNewPages();
+                if (newPages && newPages.length > 0) {
+                    this.showNewPagesNotification(newPages);
+                }
+            } catch (error) {
+                console.error('신규 페이지 체크 실패:', error);
+            }
+        };
+
+        // 주기적으로 체크 (24시간마다)
+        this.checkTimer = setInterval(checkNewPagesPeriodically, this.checkInterval);
     }
 
     // 주기적 체크 중지

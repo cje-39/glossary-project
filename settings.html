@@ -192,31 +192,36 @@
                 </div>
             </div>
 
-            <!-- 체크 주기 설정 -->
+            <!-- 자동 가져오기 설정 -->
             <div class="settings-section">
-                <h2>자동 체크 설정</h2>
+                <h2>자동 가져오기 설정</h2>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                    Confluence에서 신규 페이지를 자동으로 체크하고 알림을 받을지 설정합니다.
+                </p>
                 
                 <div class="form-group">
-                    <label for="checkInterval">체크 주기</label>
-                    <select id="checkInterval">
-                        <option value="1800000">30분마다</option>
-                        <option value="3600000" selected>1시간마다</option>
-                        <option value="7200000">2시간마다</option>
-                        <option value="14400000">4시간마다</option>
-                        <option value="86400000">1일마다</option>
-                    </select>
-                    <small>설정한 주기마다 Confluence 페이지를 자동으로 체크합니다.</small>
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="autoCheckEnabled" style="width: auto; margin: 0;">
+                        <span>자동 가져오기 활성화</span>
+                    </label>
+                    <small>체크 해제 시 자동으로 용어를 가져오지 않습니다. 수동으로만 가져올 수 있습니다.</small>
                 </div>
 
+                <div class="form-group">
+                    <label for="checkInterval">가져오기 주기 (시간)</label>
+                    <input type="number" id="checkInterval" min="1" placeholder="24" style="width: 200px;">
+                    <small>자동 가져오기가 활성화된 경우, 설정한 시간마다 신규 페이지를 체크합니다.</small>
+                </div>
+            </div>
+
+            <!-- 연결 테스트 섹션 -->
+            <div class="settings-section">
+                <h2>연결 테스트</h2>
+                
                 <div class="test-section">
                     <button type="button" id="testConnectionBtn" class="btn btn-secondary">연결 테스트</button>
-                    <button type="button" id="manualRefreshBtn" class="btn btn-primary">지금 새로고침</button>
                     
                     <div id="testStatus" class="status-message" style="display: none;"></div>
-                    
-                    <div id="lastCheckInfo" class="last-check-info" style="display: none;">
-                        <strong>마지막 체크 시간:</strong> <span id="lastCheckTime"></span>
-                    </div>
                 </div>
             </div>
 
@@ -271,24 +276,22 @@
                             tokenInput.setAttribute('data-token', window.confluenceIntegration.apiToken);
                         }
 
+                        // 자동 가져오기 설정 표시
+                        const autoCheckCheckbox = document.getElementById('autoCheckEnabled');
+                        if (autoCheckCheckbox) {
+                            autoCheckCheckbox.checked = window.confluenceIntegration.autoCheckEnabled !== false;
+                        }
+
+                        // 가져오기 주기 표시
+                        const checkIntervalInput = document.getElementById('checkInterval');
+                        if (checkIntervalInput) {
+                            const hours = Math.round(window.confluenceIntegration.checkInterval / (60 * 60 * 1000));
+                            checkIntervalInput.value = hours || 24;
+                        }
+
                         // 페이지 URL 목록 표시
                         this.renderPageUrlList();
 
-                        // 체크 주기 설정
-                        const intervalSelect = document.getElementById('checkInterval');
-                        if (intervalSelect) {
-                            intervalSelect.value = window.confluenceIntegration.checkInterval;
-                        }
-
-                        // 마지막 체크 시간 표시
-                        if (window.confluenceIntegration.lastCheckTime) {
-                            const lastCheckInfo = document.getElementById('lastCheckInfo');
-                            const lastCheckTime = document.getElementById('lastCheckTime');
-                            if (lastCheckInfo && lastCheckTime) {
-                                lastCheckTime.textContent = new Date(window.confluenceIntegration.lastCheckTime).toLocaleString('ko-KR');
-                                lastCheckInfo.style.display = 'block';
-                            }
-                        }
                     }
                 },
 
@@ -380,15 +383,39 @@
                         });
                     }
 
-                    // 체크 주기 자동 저장
-                    const intervalSelect = document.getElementById('checkInterval');
-                    if (intervalSelect) {
-                        intervalSelect.addEventListener('change', async () => {
-                            window.confluenceIntegration.checkInterval = parseInt(intervalSelect.value);
-                            // 자동 저장
+                    // 자동 가져오기 설정 변경 시 자동 저장
+                    const autoCheckCheckbox = document.getElementById('autoCheckEnabled');
+                    if (autoCheckCheckbox) {
+                        autoCheckCheckbox.addEventListener('change', async () => {
+                            window.confluenceIntegration.autoCheckEnabled = autoCheckCheckbox.checked;
                             await window.confluenceIntegration.saveSettings();
+                            
+                            // 자동 가져오기가 비활성화되면 주기적 체크 중지
+                            if (!autoCheckCheckbox.checked) {
+                                window.confluenceIntegration.stopPeriodicCheck();
+                            } else {
+                                // 활성화되면 주기적 체크 시작
+                                window.confluenceIntegration.startPeriodicCheck();
+                            }
                         });
                     }
+
+                    // 가져오기 주기 변경 시 자동 저장
+                    const checkIntervalInput = document.getElementById('checkInterval');
+                    if (checkIntervalInput) {
+                        checkIntervalInput.addEventListener('change', async () => {
+                            const hours = parseInt(checkIntervalInput.value) || 24;
+                            window.confluenceIntegration.checkInterval = hours * 60 * 60 * 1000;
+                            await window.confluenceIntegration.saveSettings();
+                            
+                            // 주기적 체크가 실행 중이면 재시작
+                            if (window.confluenceIntegration.autoCheckEnabled && window.confluenceIntegration.checkTimer) {
+                                window.confluenceIntegration.stopPeriodicCheck();
+                                window.confluenceIntegration.startPeriodicCheck();
+                            }
+                        });
+                    }
+
 
                     // 연결 테스트 버튼
                     const testBtn = document.getElementById('testConnectionBtn');
@@ -398,13 +425,6 @@
                         });
                     }
 
-                    // 수동 새로고침 버튼
-                    const refreshBtn = document.getElementById('manualRefreshBtn');
-                    if (refreshBtn) {
-                        refreshBtn.addEventListener('click', async () => {
-                            await this.manualRefresh();
-                        });
-                    }
 
                     // 설정 저장 버튼
                     const saveBtn = document.getElementById('saveSettingsBtn');
@@ -497,39 +517,6 @@
                     }
                 },
 
-                async manualRefresh() {
-                    const statusDiv = document.getElementById('testStatus');
-                    if (!statusDiv) return;
-
-                    this.showStatus('testStatus', 'info', '페이지를 체크하는 중...');
-
-                    try {
-                        const results = await window.confluenceIntegration.manualRefresh();
-                        let totalNew = 0;
-                        results.forEach(r => {
-                            if (r.newTerms) {
-                                totalNew += r.newTerms.length;
-                            }
-                        });
-
-                        if (totalNew > 0) {
-                            this.showStatus('testStatus', 'success', 
-                                `${totalNew}개의 새로운 용어가 감지되었습니다! 알림을 확인해주세요.`);
-                        } else {
-                            this.showStatus('testStatus', 'info', '새로운 용어가 없습니다.');
-                        }
-
-                        // 마지막 체크 시간 업데이트
-                        const lastCheckInfo = document.getElementById('lastCheckInfo');
-                        const lastCheckTime = document.getElementById('lastCheckTime');
-                        if (lastCheckInfo && lastCheckTime) {
-                            lastCheckTime.textContent = new Date().toLocaleString('ko-KR');
-                            lastCheckInfo.style.display = 'block';
-                        }
-                    } catch (error) {
-                        this.showStatus('testStatus', 'error', `체크 실패: ${error.message}`);
-                    }
-                },
 
                 async fetchTerms() {
                     const statusDiv = document.getElementById('fetchTermsStatus');
@@ -758,7 +745,6 @@
                     }
 
                     const tokenInput = document.getElementById('apiToken');
-                    const intervalSelect = document.getElementById('checkInterval');
                     
                     if (tokenInput) {
                         const token = tokenInput.value.trim();
@@ -769,8 +755,17 @@
                         }
                     }
 
-                    if (intervalSelect) {
-                        window.confluenceIntegration.checkInterval = parseInt(intervalSelect.value);
+                    // 자동 가져오기 설정 저장
+                    const autoCheckCheckbox = document.getElementById('autoCheckEnabled');
+                    if (autoCheckCheckbox) {
+                        window.confluenceIntegration.autoCheckEnabled = autoCheckCheckbox.checked;
+                    }
+
+                    // 가져오기 주기 저장
+                    const checkIntervalInput = document.getElementById('checkInterval');
+                    if (checkIntervalInput) {
+                        const hours = parseInt(checkIntervalInput.value) || 24;
+                        window.confluenceIntegration.checkInterval = hours * 60 * 60 * 1000;
                     }
 
                     // 페이지 URL 업데이트
@@ -784,10 +779,11 @@
                     try {
                         await window.confluenceIntegration.saveSettings();
                         
-                        // 주기적 체크 재시작
-                        window.confluenceIntegration.stopPeriodicCheck();
-                        if (window.confluenceIntegration.apiToken && window.confluenceIntegration.monitoredPages.length > 0) {
+                        // 자동 가져오기 설정에 따라 주기적 체크 시작/중지
+                        if (window.confluenceIntegration.autoCheckEnabled) {
                             window.confluenceIntegration.startPeriodicCheck();
+                        } else {
+                            window.confluenceIntegration.stopPeriodicCheck();
                         }
 
                         alert('설정이 저장되었습니다.');
