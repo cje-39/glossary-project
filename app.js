@@ -727,7 +727,7 @@ class GlossaryManager {
                 }).join('');
                 
                 const categories = term.category && term.category.length > 0 
-                    ? term.category.map(cat => `<span class="category-tag">${cat}</span>`).join(' ')
+                    ? term.category.map(cat => `<span class="category-tag">${cat.replace(/^#/, '')}</span>`).join(' ')
                     : '-';
                 
                 // 검색어 하이라이트
