@@ -36,6 +36,14 @@
             gap: 10px;
         }
 
+        .meeting-filter-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
         .meeting-list {
             background: white;
             border-radius: 8px;
@@ -72,15 +80,24 @@
             color: #1a1a1a;
         }
 
-        .meeting-item-date {
-            color: #666;
+        .meeting-item-meta {
+            display: flex;
+            gap: 15px;
             font-size: 0.9em;
+            color: #666;
         }
 
-        .meeting-item-summary {
+        .meeting-item-content {
             color: #666;
             font-size: 0.95em;
-            margin-top: 5px;
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+
+        .meeting-item-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
         }
 
         .empty-state {
@@ -92,6 +109,139 @@
         .empty-state-icon {
             font-size: 4em;
             margin-bottom: 20px;
+        }
+
+        /* 모달 스타일 */
+        .meeting-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            overflow-y: auto;
+        }
+
+        .meeting-modal.active {
+            display: flex;
+        }
+
+        .meeting-modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            position: relative;
+            margin: 20px;
+        }
+
+        .meeting-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .meeting-modal-header h2 {
+            font-family: 'KraftonFont', 'Pretendard', 'Nanum Gothic', 나눔고딕, sans-serif;
+            font-size: 1.44em;
+            color: #1a1a1a;
+            margin: 0;
+        }
+
+        .meeting-modal-close {
+            background: none;
+            border: none;
+            font-size: 32px;
+            color: #999;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            padding: 0;
+            transition: all 0.2s;
+            border-radius: 4px;
+        }
+
+        .meeting-modal-close:hover {
+            color: #333;
+            background: #f0f0f0;
+        }
+
+        .meeting-form-group {
+            margin-bottom: 20px;
+        }
+
+        .meeting-form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        .meeting-form-group label .required {
+            color: #e74c3c;
+            margin-left: 4px;
+        }
+
+        .meeting-form-group input,
+        .meeting-form-group select,
+        .meeting-form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+
+        .meeting-form-group input:focus,
+        .meeting-form-group select:focus,
+        .meeting-form-group textarea:focus {
+            outline: none;
+            border-color: #2b68dc;
+        }
+
+        .meeting-form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .meeting-form-group textarea.large {
+            min-height: 200px;
+        }
+
+        .meeting-form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .meeting-tag {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            font-size: 0.85em;
+            margin-right: 6px;
+            margin-bottom: 6px;
         }
     </style>
 </head>
@@ -114,6 +264,14 @@
                 </div>
             </div>
 
+            <!-- 카테고리 필터 -->
+            <div class="meeting-filter-section" id="categoryFilterSection" style="display: none;">
+                <div class="category-filter-container" id="categoryFilterContainer">
+                    <!-- 카테고리 필터가 여기에 동적으로 추가됩니다 -->
+                </div>
+            </div>
+
+            <!-- 회의 기록 목록 -->
             <div class="meeting-list" id="meetingList">
                 <div class="empty-state">
                     <div class="empty-state-icon">📋</div>
@@ -124,151 +282,88 @@
         </div>
     </div>
 
+    <!-- 회의 기록 작성/수정 모달 -->
+    <div id="meetingModal" class="meeting-modal">
+        <div class="meeting-modal-content">
+            <div class="meeting-modal-header">
+                <h2 id="modalTitle">새 회의 기록</h2>
+                <button class="meeting-modal-close" id="closeModal">&times;</button>
+            </div>
+            <form id="meetingForm">
+                <div class="meeting-form-group">
+                    <label>일시 <span class="required">*</span></label>
+                    <input type="datetime-local" id="meetingDateTime" required>
+                </div>
+
+                <div class="meeting-form-group">
+                    <label>카테고리 <span class="required">*</span></label>
+                    <select id="meetingCategory" required>
+                        <option value="">선택하세요</option>
+                    </select>
+                </div>
+
+                <div class="meeting-form-group">
+                    <label>담당자 <span class="required">*</span></label>
+                    <select id="meetingAssignee" required>
+                        <option value="">선택하세요</option>
+                    </select>
+                </div>
+
+                <div class="meeting-form-group">
+                    <label>회의 제목 <span class="required">*</span></label>
+                    <input type="text" id="meetingTitle" required placeholder="회의 제목을 입력하세요">
+                </div>
+
+                <div class="meeting-form-group">
+                    <label>논의 내용 <span class="required">*</span></label>
+                    <textarea id="meetingContent" class="large" required placeholder="회의에서 논의된 내용을 입력하세요"></textarea>
+                </div>
+
+                <div class="meeting-form-group">
+                    <label>참석자</label>
+                    <select id="meetingAttendees" multiple style="min-height: 100px;">
+                        <option value="">선택하세요</option>
+                    </select>
+                    <small style="color: #666; font-size: 0.85em; margin-top: 5px; display: block;">Ctrl(또는 Cmd) 키를 누른 채로 여러 명을 선택할 수 있습니다.</small>
+                </div>
+
+                <div class="meeting-form-group">
+                    <label>참고 사항</label>
+                    <textarea id="meetingNotes" placeholder="추가 참고 사항을 입력하세요"></textarea>
+                </div>
+
+                <div class="meeting-form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">취소</button>
+                    <button type="submit" class="btn btn-primary" id="saveBtn">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 회의 기록 상세보기 모달 -->
+    <div id="meetingDetailModal" class="meeting-modal">
+        <div class="meeting-modal-content">
+            <div class="meeting-modal-header">
+                <h2 id="detailTitle">회의 기록 상세</h2>
+                <button class="meeting-modal-close" id="closeDetailModal">&times;</button>
+            </div>
+            <div id="meetingDetailContent">
+                <!-- 상세 내용이 여기에 표시됩니다 -->
+            </div>
+            <div class="meeting-form-actions">
+                <button type="button" class="btn btn-secondary" id="closeDetailBtn">닫기</button>
+                <button type="button" class="btn btn-primary" id="editBtn">수정</button>
+                <button type="button" class="btn btn-danger" id="deleteBtn">삭제</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase SDK v8 -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="firebase-init.js"></script>
     <script src="auth.js"></script>
-    <script>
-        // 회의 기록 관리 클래스
-        class MeetingManager {
-            constructor() {
-                this.meetings = [];
-                this.init();
-            }
-
-            async init() {
-                await this.loadMeetings();
-                this.setupEventListeners();
-                this.renderMeetings();
-            }
-
-            setupEventListeners() {
-                const newMeetingBtn = document.getElementById('newMeetingBtn');
-                if (newMeetingBtn) {
-                    newMeetingBtn.addEventListener('click', () => {
-                        this.showNewMeetingModal();
-                    });
-                }
-            }
-
-            async loadMeetings() {
-                try {
-                    if (window.FirestoreHelper) {
-                        const data = await FirestoreHelper.load('meetings', 'notes');
-                        this.meetings = data.meetings || [];
-                    } else {
-                        const savedData = localStorage.getItem('meetingNotes');
-                        if (savedData) {
-                            this.meetings = JSON.parse(savedData);
-                        }
-                    }
-                } catch (error) {
-                    console.error('회의 기록 로드 실패:', error);
-                    this.meetings = [];
-                }
-            }
-
-            async saveMeetings() {
-                try {
-                    localStorage.setItem('meetingNotes', JSON.stringify(this.meetings));
-                    if (window.FirestoreHelper) {
-                        await FirestoreHelper.save('meetings', 'notes', { meetings: this.meetings });
-                    }
-                } catch (error) {
-                    console.error('회의 기록 저장 실패:', error);
-                    alert('회의 기록 저장에 실패했습니다.');
-                }
-            }
-
-            renderMeetings() {
-                const meetingList = document.getElementById('meetingList');
-                if (!meetingList) return;
-
-                if (this.meetings.length === 0) {
-                    meetingList.innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-state-icon">📋</div>
-                            <p>아직 등록된 회의 기록이 없습니다.</p>
-                            <p style="margin-top: 10px; font-size: 0.9em;">새 회의 기록 버튼을 클릭하여 첫 회의를 등록하세요.</p>
-                        </div>
-                    `;
-                    return;
-                }
-
-                const html = this.meetings.map((meeting, index) => `
-                    <div class="meeting-item" onclick="window.meetingManager.openMeeting(${index})">
-                        <div class="meeting-item-header">
-                            <div class="meeting-item-title">${this.escapeHtml(meeting.title || '제목 없음')}</div>
-                            <div class="meeting-item-date">${this.formatDate(meeting.date)}</div>
-                        </div>
-                        <div class="meeting-item-summary">${this.escapeHtml(meeting.summary || '요약 없음')}</div>
-                    </div>
-                `).join('');
-
-                meetingList.innerHTML = html;
-            }
-
-            showNewMeetingModal() {
-                const title = prompt('회의 제목을 입력하세요:');
-                if (!title) return;
-
-                const date = prompt('회의 날짜를 입력하세요 (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
-                if (!date) return;
-
-                const summary = prompt('회의 요약을 입력하세요:') || '';
-
-                const newMeeting = {
-                    id: Date.now().toString(),
-                    title: title,
-                    date: date,
-                    summary: summary,
-                    content: '',
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                };
-
-                this.meetings.unshift(newMeeting);
-                this.saveMeetings();
-                this.renderMeetings();
-            }
-
-            openMeeting(index) {
-                const meeting = this.meetings[index];
-                if (!meeting) return;
-
-                // 간단한 모달로 회의 내용 표시
-                const content = prompt('회의 내용을 입력하세요:', meeting.content || '');
-                if (content !== null) {
-                    meeting.content = content;
-                    meeting.updatedAt = new Date().toISOString();
-                    this.saveMeetings();
-                    this.renderMeetings();
-                }
-            }
-
-            formatDate(dateString) {
-                if (!dateString) return '';
-                const date = new Date(dateString);
-                return date.toLocaleDateString('ko-KR', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-            }
-
-            escapeHtml(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
-            }
-        }
-
-        // 페이지 로드 시 초기화
-        document.addEventListener('DOMContentLoaded', () => {
-            window.meetingManager = new MeetingManager();
-        });
-    </script>
+    <script src="meeting.js"></script>
 </body>
 </html>

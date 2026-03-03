@@ -1,0 +1,555 @@
+// 회의 기록 관리 클래스
+class MeetingManager {
+    constructor() {
+        this.meetings = [];
+        this.categories = [];
+        this.assignees = [];
+        this.selectedCategoryFilter = null;
+        this.editingId = null;
+        this.viewingId = null;
+        this.init();
+    }
+
+    async init() {
+        await this.loadCategories();
+        await this.loadAssignees();
+        await this.loadMeetings();
+        this.setupEventListeners();
+        this.renderCategoryFilter();
+        this.renderMeetings();
+    }
+
+    setupEventListeners() {
+        // 새 회의 기록 버튼
+        const newMeetingBtn = document.getElementById('newMeetingBtn');
+        if (newMeetingBtn) {
+            newMeetingBtn.addEventListener('click', () => {
+                this.openNewMeetingModal();
+            });
+        }
+
+        // 모달 닫기
+        const closeModal = document.getElementById('closeModal');
+        const cancelBtn = document.getElementById('cancelBtn');
+        if (closeModal) closeModal.addEventListener('click', () => this.closeMeetingModal());
+        if (cancelBtn) cancelBtn.addEventListener('click', () => this.closeMeetingModal());
+
+        // 상세보기 모달 닫기
+        const closeDetailModal = document.getElementById('closeDetailModal');
+        const closeDetailBtn = document.getElementById('closeDetailBtn');
+        if (closeDetailModal) closeDetailModal.addEventListener('click', () => this.closeDetailModal());
+        if (closeDetailBtn) closeDetailBtn.addEventListener('click', () => this.closeDetailModal());
+
+        // 수정 버튼
+        const editBtn = document.getElementById('editBtn');
+        if (editBtn) {
+            editBtn.addEventListener('click', () => {
+                if (this.viewingId) {
+                    this.closeDetailModal();
+                    this.openEditModal(this.viewingId);
+                }
+            });
+        }
+
+        // 삭제 버튼
+        const deleteBtn = document.getElementById('deleteBtn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', () => {
+                if (this.viewingId) {
+                    this.deleteMeeting(this.viewingId);
+                }
+            });
+        }
+
+        // 폼 제출
+        const meetingForm = document.getElementById('meetingForm');
+        if (meetingForm) {
+            meetingForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.saveMeeting();
+            });
+        }
+
+        // 모달 외부 클릭 시 닫기
+        const meetingModal = document.getElementById('meetingModal');
+        const detailModal = document.getElementById('meetingDetailModal');
+        if (meetingModal) {
+            meetingModal.addEventListener('click', (e) => {
+                if (e.target === meetingModal) {
+                    this.closeMeetingModal();
+                }
+            });
+        }
+        if (detailModal) {
+            detailModal.addEventListener('click', (e) => {
+                if (e.target === detailModal) {
+                    this.closeDetailModal();
+                }
+            });
+        }
+    }
+
+    // 카테고리 로드 (Glossary와 동일한 소스 사용)
+    async loadCategories() {
+        try {
+            // Firestore에서 먼저 시도
+            if (window.FirestoreHelper) {
+                const data = await FirestoreHelper.load('glossary', 'categories');
+                if (data && data.categories) {
+                    this.categories = data.categories;
+                    return;
+                }
+            }
+        } catch (error) {
+            console.log('Firestore에서 카테고리 로드 실패, LocalStorage 사용:', error);
+        }
+
+        // LocalStorage에서 로드 (Glossary와 동일한 키 사용)
+        const savedCategories = localStorage.getItem('glossaryCategories');
+        if (savedCategories) {
+            this.categories = JSON.parse(savedCategories);
+        } else {
+            // 기본 카테고리
+            this.categories = ['#dinkum', '#pubgm', '#ADK', '#palm', '#inzoi', '#tango'];
+        }
+    }
+
+    // 담당자 목록 로드
+    async loadAssignees() {
+        try {
+            // Discussion의 작성자 목록 사용 (또는 별도 관리)
+            if (window.FirestoreHelper) {
+                const data = await FirestoreHelper.load('discussion', 'authors');
+                if (data && data.authors) {
+                    this.assignees = data.authors;
+                    return;
+                }
+            }
+        } catch (error) {
+            console.log('Firestore에서 담당자 로드 실패, LocalStorage 사용:', error);
+        }
+
+        // LocalStorage에서 로드
+        const savedAssignees = localStorage.getItem('discussionAuthors');
+        if (savedAssignees) {
+            this.assignees = JSON.parse(savedAssignees);
+        } else {
+            // 기본 담당자 목록
+            this.assignees = [];
+        }
+    }
+
+    // 회의 기록 로드
+    async loadMeetings() {
+        try {
+            const savedData = localStorage.getItem('meetingRecords');
+            if (savedData) {
+                this.meetings = JSON.parse(savedData);
+                // 날짜 기준으로 정렬 (최신순)
+                this.meetings.sort((a, b) => {
+                    const dateA = new Date(a.dateTime || a.createdAt);
+                    const dateB = new Date(b.dateTime || b.createdAt);
+                    return dateB - dateA;
+                });
+            } else {
+                this.meetings = [];
+            }
+        } catch (error) {
+            console.error('회의 기록 로드 실패:', error);
+            this.meetings = [];
+        }
+    }
+
+    // 회의 기록 저장
+    async saveMeetings() {
+        try {
+            localStorage.setItem('meetingRecords', JSON.stringify(this.meetings));
+        } catch (error) {
+            console.error('회의 기록 저장 실패:', error);
+            alert('회의 기록 저장에 실패했습니다.');
+        }
+    }
+
+    // 카테고리 필터 렌더링
+    renderCategoryFilter() {
+        const filterSection = document.getElementById('categoryFilterSection');
+        const filterContainer = document.getElementById('categoryFilterContainer');
+        if (!filterSection || !filterContainer) return;
+
+        if (this.categories.length === 0) {
+            filterSection.style.display = 'none';
+            return;
+        }
+
+        filterSection.style.display = 'block';
+        filterContainer.innerHTML = '';
+
+        // 전체 옵션
+        const allLabel = document.createElement('label');
+        allLabel.className = 'category-filter-label';
+        allLabel.style.cssText = 'cursor: pointer; padding: 6px 12px; border-radius: 6px; transition: background-color 0.2s; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; margin-right: 8px;';
+        
+        const allCheckbox = document.createElement('input');
+        allCheckbox.type = 'checkbox';
+        allCheckbox.className = 'category-filter-checkbox';
+        allCheckbox.checked = this.selectedCategoryFilter === null;
+        allCheckbox.addEventListener('change', () => {
+            if (allCheckbox.checked) {
+                this.selectedCategoryFilter = null;
+                this.renderCategoryFilter();
+                this.renderMeetings();
+            }
+        });
+        
+        allLabel.appendChild(allCheckbox);
+        allLabel.appendChild(document.createTextNode('전체'));
+        filterContainer.appendChild(allLabel);
+
+        // 카테고리별 필터
+        this.categories.forEach(category => {
+            const label = document.createElement('label');
+            label.className = 'category-filter-label';
+            label.style.cssText = 'cursor: pointer; padding: 6px 12px; border-radius: 6px; transition: background-color 0.2s; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; margin-right: 8px;';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'category-filter-checkbox';
+            checkbox.checked = this.selectedCategoryFilter === category;
+            checkbox.addEventListener('change', () => {
+                if (checkbox.checked) {
+                    this.selectedCategoryFilter = category;
+                    this.renderCategoryFilter();
+                    this.renderMeetings();
+                }
+            });
+            
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(category));
+            filterContainer.appendChild(label);
+        });
+    }
+
+    // 회의 기록 목록 렌더링
+    renderMeetings() {
+        const meetingList = document.getElementById('meetingList');
+        if (!meetingList) return;
+
+        // 필터링
+        let filteredMeetings = this.meetings;
+        if (this.selectedCategoryFilter) {
+            filteredMeetings = this.meetings.filter(meeting => 
+                meeting.category === this.selectedCategoryFilter
+            );
+        }
+
+        if (filteredMeetings.length === 0) {
+            meetingList.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📋</div>
+                    <p>${this.selectedCategoryFilter ? '선택한 카테고리의 회의 기록이 없습니다.' : '아직 등록된 회의 기록이 없습니다.'}</p>
+                    <p style="margin-top: 10px; font-size: 0.9em;">새 회의 기록 버튼을 클릭하여 첫 회의를 등록하세요.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const html = filteredMeetings.map(meeting => {
+            const dateTime = new Date(meeting.dateTime);
+            const formattedDate = dateTime.toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            const attendeesHtml = meeting.attendees && meeting.attendees.length > 0
+                ? meeting.attendees.map(a => `<span class="meeting-tag">${this.escapeHtml(a)}</span>`).join('')
+                : '없음';
+
+            return `
+                <div class="meeting-item" onclick="window.meetingManager.viewMeeting('${meeting.id}')">
+                    <div class="meeting-item-header">
+                        <div class="meeting-item-title">${this.escapeHtml(meeting.title)}</div>
+                        <div class="meeting-item-meta">
+                            <span>${this.escapeHtml(meeting.category)}</span>
+                            <span>${formattedDate}</span>
+                        </div>
+                    </div>
+                    <div class="meeting-item-content">
+                        <div style="margin-bottom: 8px;"><strong>담당자:</strong> ${this.escapeHtml(meeting.assignee)}</div>
+                        <div style="margin-bottom: 8px;"><strong>참석자:</strong> ${attendeesHtml}</div>
+                        <div>${this.escapeHtml(meeting.content.substring(0, 150))}${meeting.content.length > 150 ? '...' : ''}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        meetingList.innerHTML = html;
+    }
+
+    // 새 회의 기록 모달 열기
+    openNewMeetingModal() {
+        this.editingId = null;
+        const modal = document.getElementById('meetingModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const form = document.getElementById('meetingForm');
+
+        if (modalTitle) modalTitle.textContent = '새 회의 기록';
+        if (form) form.reset();
+
+        // 현재 날짜/시간으로 기본값 설정
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const dateTimeValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+        
+        const dateTimeInput = document.getElementById('meetingDateTime');
+        if (dateTimeInput) dateTimeInput.value = dateTimeValue;
+
+        // 카테고리 옵션 채우기
+        this.populateCategoryOptions();
+        // 담당자 옵션 채우기
+        this.populateAssigneeOptions();
+        // 참석자 옵션 채우기
+        this.populateAttendeeOptions();
+
+        if (modal) modal.classList.add('active');
+    }
+
+    // 수정 모달 열기
+    openEditModal(id) {
+        const meeting = this.meetings.find(m => m.id === id);
+        if (!meeting) return;
+
+        this.editingId = id;
+        const modal = document.getElementById('meetingModal');
+        const modalTitle = document.getElementById('modalTitle');
+
+        if (modalTitle) modalTitle.textContent = '회의 기록 수정';
+
+        // 폼에 데이터 채우기
+        const dateTime = new Date(meeting.dateTime);
+        const year = dateTime.getFullYear();
+        const month = String(dateTime.getMonth() + 1).padStart(2, '0');
+        const day = String(dateTime.getDate()).padStart(2, '0');
+        const hours = String(dateTime.getHours()).padStart(2, '0');
+        const minutes = String(dateTime.getMinutes()).padStart(2, '0');
+        const dateTimeValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+        document.getElementById('meetingDateTime').value = dateTimeValue;
+        document.getElementById('meetingCategory').value = meeting.category || '';
+        document.getElementById('meetingAssignee').value = meeting.assignee || '';
+        document.getElementById('meetingTitle').value = meeting.title || '';
+        document.getElementById('meetingContent').value = meeting.content || '';
+        document.getElementById('meetingNotes').value = meeting.notes || '';
+
+        // 참석자 선택
+        const attendeesSelect = document.getElementById('meetingAttendees');
+        if (attendeesSelect && meeting.attendees) {
+            Array.from(attendeesSelect.options).forEach(option => {
+                option.selected = meeting.attendees.includes(option.value);
+            });
+        }
+
+        // 옵션 채우기
+        this.populateCategoryOptions();
+        this.populateAssigneeOptions();
+        this.populateAttendeeOptions();
+
+        if (modal) modal.classList.add('active');
+    }
+
+    // 카테고리 옵션 채우기
+    populateCategoryOptions() {
+        const categorySelect = document.getElementById('meetingCategory');
+        if (!categorySelect) return;
+
+        categorySelect.innerHTML = '<option value="">선택하세요</option>';
+        this.categories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = category;
+            categorySelect.appendChild(option);
+        });
+    }
+
+    // 담당자 옵션 채우기
+    populateAssigneeOptions() {
+        const assigneeSelect = document.getElementById('meetingAssignee');
+        if (!assigneeSelect) return;
+
+        assigneeSelect.innerHTML = '<option value="">선택하세요</option>';
+        this.assignees.forEach(assignee => {
+            const option = document.createElement('option');
+            option.value = assignee;
+            option.textContent = assignee;
+            assigneeSelect.appendChild(option);
+        });
+    }
+
+    // 참석자 옵션 채우기 (담당자 목록과 동일)
+    populateAttendeeOptions() {
+        const attendeesSelect = document.getElementById('meetingAttendees');
+        if (!attendeesSelect) return;
+
+        attendeesSelect.innerHTML = '<option value="">선택하세요</option>';
+        this.assignees.forEach(assignee => {
+            const option = document.createElement('option');
+            option.value = assignee;
+            option.textContent = assignee;
+            attendeesSelect.appendChild(option);
+        });
+    }
+
+    // 회의 기록 저장
+    async saveMeeting() {
+        const dateTime = document.getElementById('meetingDateTime').value;
+        const category = document.getElementById('meetingCategory').value;
+        const assignee = document.getElementById('meetingAssignee').value;
+        const title = document.getElementById('meetingTitle').value;
+        const content = document.getElementById('meetingContent').value;
+        const notes = document.getElementById('meetingNotes').value;
+        const attendeesSelect = document.getElementById('meetingAttendees');
+        const attendees = Array.from(attendeesSelect.selectedOptions).map(opt => opt.value).filter(v => v);
+
+        if (!dateTime || !category || !assignee || !title || !content) {
+            alert('필수 항목을 모두 입력해주세요.');
+            return;
+        }
+
+        const meetingData = {
+            id: this.editingId || Date.now().toString(),
+            dateTime: dateTime,
+            category: category,
+            assignee: assignee,
+            title: title,
+            content: content,
+            notes: notes || '',
+            attendees: attendees,
+            createdAt: this.editingId 
+                ? this.meetings.find(m => m.id === this.editingId).createdAt 
+                : new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        if (this.editingId) {
+            // 수정
+            const index = this.meetings.findIndex(m => m.id === this.editingId);
+            if (index !== -1) {
+                this.meetings[index] = meetingData;
+            }
+        } else {
+            // 새로 추가
+            this.meetings.unshift(meetingData);
+        }
+
+        // 날짜 기준으로 정렬 (최신순)
+        this.meetings.sort((a, b) => {
+            const dateA = new Date(a.dateTime);
+            const dateB = new Date(b.dateTime);
+            return dateB - dateA;
+        });
+
+        await this.saveMeetings();
+        this.closeMeetingModal();
+        this.renderMeetings();
+    }
+
+    // 회의 기록 상세보기
+    viewMeeting(id) {
+        const meeting = this.meetings.find(m => m.id === id);
+        if (!meeting) return;
+
+        this.viewingId = id;
+        const modal = document.getElementById('meetingDetailModal');
+        const detailTitle = document.getElementById('detailTitle');
+        const detailContent = document.getElementById('meetingDetailContent');
+
+        if (detailTitle) detailTitle.textContent = meeting.title;
+
+        const dateTime = new Date(meeting.dateTime);
+        const formattedDate = dateTime.toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        const attendeesHtml = meeting.attendees && meeting.attendees.length > 0
+            ? meeting.attendees.map(a => `<span class="meeting-tag">${this.escapeHtml(a)}</span>`).join('')
+            : '없음';
+
+        if (detailContent) {
+            detailContent.innerHTML = `
+                <div style="margin-bottom: 20px;">
+                    <div style="margin-bottom: 10px;"><strong>일시:</strong> ${formattedDate}</div>
+                    <div style="margin-bottom: 10px;"><strong>카테고리:</strong> ${this.escapeHtml(meeting.category)}</div>
+                    <div style="margin-bottom: 10px;"><strong>담당자:</strong> ${this.escapeHtml(meeting.assignee)}</div>
+                    <div style="margin-bottom: 10px;"><strong>참석자:</strong> ${attendeesHtml}</div>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <h3 style="font-size: 1.1em; margin-bottom: 10px;">논의 내용</h3>
+                    <div style="white-space: pre-wrap; line-height: 1.6; color: #333;">${this.escapeHtml(meeting.content)}</div>
+                </div>
+                ${meeting.notes ? `
+                <div style="margin-bottom: 20px;">
+                    <h3 style="font-size: 1.1em; margin-bottom: 10px;">참고 사항</h3>
+                    <div style="white-space: pre-wrap; line-height: 1.6; color: #666;">${this.escapeHtml(meeting.notes)}</div>
+                </div>
+                ` : ''}
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 0.9em; color: #999;">
+                    <div>작성일: ${new Date(meeting.createdAt).toLocaleString('ko-KR')}</div>
+                    ${meeting.updatedAt !== meeting.createdAt ? `<div>수정일: ${new Date(meeting.updatedAt).toLocaleString('ko-KR')}</div>` : ''}
+                </div>
+            `;
+        }
+
+        if (modal) modal.classList.add('active');
+    }
+
+    // 회의 기록 삭제
+    deleteMeeting(id) {
+        const meeting = this.meetings.find(m => m.id === id);
+        if (!meeting) return;
+
+        if (!confirm(`"${meeting.title}" 회의 기록을 삭제하시겠습니까?`)) {
+            return;
+        }
+
+        this.meetings = this.meetings.filter(m => m.id !== id);
+        this.saveMeetings();
+        this.closeDetailModal();
+        this.renderMeetings();
+    }
+
+    // 모달 닫기
+    closeMeetingModal() {
+        const modal = document.getElementById('meetingModal');
+        if (modal) modal.classList.remove('active');
+        this.editingId = null;
+    }
+
+    // 상세보기 모달 닫기
+    closeDetailModal() {
+        const modal = document.getElementById('meetingDetailModal');
+        if (modal) modal.classList.remove('active');
+        this.viewingId = null;
+    }
+
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+}
+
+// 페이지 로드 시 초기화
+document.addEventListener('DOMContentLoaded', () => {
+    window.meetingManager = new MeetingManager();
+});
