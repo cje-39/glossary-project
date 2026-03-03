@@ -344,17 +344,24 @@ class MeetingManager {
         document.getElementById('meetingContent').value = meeting.content || '';
         document.getElementById('meetingNotes').value = meeting.notes || '';
 
-        // 담당자 선택 (다중 선택)
-        const assigneeSelect = document.getElementById('meetingAssignee');
-        if (assigneeSelect) {
-            Array.from(assigneeSelect.options).forEach(option => {
-                if (Array.isArray(meeting.assignee)) {
-                    option.selected = meeting.assignee.includes(option.value);
-                } else if (meeting.assignee) {
-                    option.selected = option.value === meeting.assignee;
+        // 담당자 체크박스 선택
+        const assigneeCheckboxes = document.querySelectorAll('#meetingAssigneeCheckboxes input[type="checkbox"]');
+        assigneeCheckboxes.forEach(checkbox => {
+            if (Array.isArray(meeting.assignee)) {
+                checkbox.checked = meeting.assignee.includes(checkbox.value);
+            } else if (meeting.assignee) {
+                checkbox.checked = checkbox.value === meeting.assignee;
+            }
+            
+            // 체크 상태에 따른 스타일 적용
+            if (checkbox.checked) {
+                const label = checkbox.closest('label');
+                if (label) {
+                    label.style.background = '#e8f0fe';
+                    label.style.borderColor = '#2b68dc';
                 }
-            });
-        }
+            }
+        });
 
         // 참석자 입력 (텍스트)
         const attendeesInput = document.getElementById('meetingAttendees');
@@ -387,17 +394,61 @@ class MeetingManager {
         });
     }
 
-    // 담당자 옵션 채우기
+    // 담당자 체크박스 채우기
     populateAssigneeOptions() {
-        const assigneeSelect = document.getElementById('meetingAssignee');
-        if (!assigneeSelect) return;
+        const assigneeContainer = document.getElementById('meetingAssigneeCheckboxes');
+        if (!assigneeContainer) return;
 
-        assigneeSelect.innerHTML = '<option value="">선택하세요</option>';
+        assigneeContainer.innerHTML = '';
+
+        if (this.assignees.length === 0) {
+            assigneeContainer.innerHTML = '<div style="color: #999; padding: 10px;">담당자 목록이 없습니다. Discussion 페이지에서 작성자를 추가해주세요.</div>';
+            return;
+        }
+
         this.assignees.forEach(assignee => {
-            const option = document.createElement('option');
-            option.value = assignee;
-            option.textContent = assignee;
-            assigneeSelect.appendChild(option);
+            const label = document.createElement('label');
+            label.style.cssText = 'display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 6px; transition: all 0.2s; user-select: none;';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = assignee;
+            checkbox.id = `assignee_${assignee}`;
+            checkbox.style.cssText = 'width: 18px; height: 18px; cursor: pointer; accent-color: #2b68dc;';
+            
+            const span = document.createElement('span');
+            span.textContent = assignee;
+            span.style.cssText = 'font-size: 14px; color: #333;';
+            
+            label.appendChild(checkbox);
+            label.appendChild(span);
+            
+            // 호버 효과
+            label.addEventListener('mouseenter', () => {
+                if (!checkbox.checked) {
+                    label.style.background = '#f0f0f0';
+                    label.style.borderColor = '#2b68dc';
+                }
+            });
+            label.addEventListener('mouseleave', () => {
+                if (!checkbox.checked) {
+                    label.style.background = '#f8f9fa';
+                    label.style.borderColor = '#e0e0e0';
+                }
+            });
+            
+            // 체크 상태에 따른 스타일 변경
+            checkbox.addEventListener('change', () => {
+                if (checkbox.checked) {
+                    label.style.background = '#e8f0fe';
+                    label.style.borderColor = '#2b68dc';
+                } else {
+                    label.style.background = '#f8f9fa';
+                    label.style.borderColor = '#e0e0e0';
+                }
+            });
+            
+            assigneeContainer.appendChild(label);
         });
     }
 
@@ -406,8 +457,8 @@ class MeetingManager {
     async saveMeeting() {
         const dateTime = document.getElementById('meetingDateTime').value;
         const category = document.getElementById('meetingCategory').value;
-        const assigneeSelect = document.getElementById('meetingAssignee');
-        const assignees = Array.from(assigneeSelect.selectedOptions).map(opt => opt.value).filter(v => v);
+        const assigneeCheckboxes = document.querySelectorAll('#meetingAssigneeCheckboxes input[type="checkbox"]:checked');
+        const assignees = Array.from(assigneeCheckboxes).map(cb => cb.value);
         const title = document.getElementById('meetingTitle').value;
         const content = document.getElementById('meetingContent').value;
         const notes = document.getElementById('meetingNotes').value;
