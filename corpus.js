@@ -152,9 +152,12 @@ class CorpusManager {
         try {
             // Firestore에서 먼저 시도
             if (window.FirestoreHelper) {
+                console.log('Firestore에서 폴더 로드 시도...');
                 const data = await FirestoreHelper.load('corpus', 'folders');
+                console.log('Firestore에서 로드된 폴더:', data);
                 if (data && data.folders) {
                     this.folders = data.folders;
+                    console.log(`Firestore에서 ${this.folders.length}개의 폴더 로드됨`);
                     // LocalStorage에도 백업 저장
                     localStorage.setItem('corpusFolders', JSON.stringify(this.folders));
                     
@@ -167,10 +170,14 @@ class CorpusManager {
                         }
                     });
                     return;
+                } else {
+                    console.log('Firestore에 폴더 데이터가 없음');
                 }
+            } else {
+                console.log('FirestoreHelper가 사용 불가능함 (폴더)');
             }
         } catch (error) {
-            console.log('Firestore에서 폴더 로드 실패, LocalStorage 사용:', error);
+            console.error('Firestore에서 폴더 로드 실패, LocalStorage 사용:', error);
         }
 
         // LocalStorage에서 로드
@@ -635,12 +642,15 @@ class CorpusManager {
             return;
         }
 
-        console.log('renderFileList called, fileGroups:', this.fileGroups.length);
+        console.log('renderFileList called, fileGroups:', this.fileGroups.length, 'folders:', this.folders.length);
 
         // 폴더 목록 렌더링 (파일 그룹이 없어도 폴더 관리 섹션은 표시)
         const folderList = document.getElementById('folderList');
         if (folderList) {
+            console.log('folderList 요소 찾음, renderFolderList 호출');
             this.renderFolderList();
+        } else {
+            console.error('folderList 요소를 찾을 수 없습니다!');
         }
 
         // 파일 그룹이 없어도 섹션은 표시 (빈 상태 메시지)
@@ -678,8 +688,12 @@ class CorpusManager {
     // 폴더 목록 렌더링 (카드 형식)
     renderFolderList() {
         const folderList = document.getElementById('folderList');
-        if (!folderList) return;
+        if (!folderList) {
+            console.log('folderList 요소를 찾을 수 없습니다');
+            return;
+        }
 
+        console.log('renderFolderList 호출됨, 폴더 수:', this.folders.length, '파일 그룹 수:', this.fileGroups.length);
         folderList.innerHTML = '';
         folderList.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;';
 
