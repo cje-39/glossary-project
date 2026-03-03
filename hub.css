@@ -238,7 +238,7 @@
 
 .login-input-group input:focus {
     outline: none;
-    border-color: #2b68dc;
+    border-color: #f9423a;
 }
 
 .login-error {
@@ -265,13 +265,13 @@
     height: 18px;
     margin-right: 8px;
     cursor: pointer;
-    accent-color: #2b68dc;
+    accent-color: #f9423a;
 }
 
 .login-submit-btn {
     width: 100%;
     padding: 14px;
-    background: linear-gradient(135deg, #2b68dc 0%, #2b68dc 100%);
+    background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%);
     color: white;
     border: none;
     border-radius: 8px;
@@ -283,7 +283,7 @@
 }
 
 .login-submit-btn:hover:not(:disabled) {
-    background: linear-gradient(135deg, #2b68dc 0%, #2b68dc 100%);
+    background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(13, 74, 31, 0.4);
 }
@@ -387,20 +387,20 @@
 }
 
 .login-forgot-password a {
-    color: #2b68dc;
+    color: #f9423a;
     text-decoration: none;
     font-size: 0.9em;
     transition: color 0.3s;
 }
 
 .login-forgot-password a:hover {
-    color: #2b68dc;
+    color: #f9423a;
     text-decoration: underline;
 }
 
 /* 성공 메시지 */
 .login-success {
-    color: #2b68dc;
+    color: #f9423a;
     font-size: 0.9em;
     margin-top: 8px;
     padding-left: 4px;
@@ -499,7 +499,7 @@
 
 #passwordInput:focus {
     outline: none;
-    border-color: #2b68dc;
+    border-color: #f9423a;
 }
 
 .password-error {
@@ -526,13 +526,13 @@
     height: 18px;
     margin-right: 8px;
     cursor: pointer;
-    accent-color: #2b68dc;
+    accent-color: #f9423a;
 }
 
 .password-submit-btn {
     width: 100%;
     padding: 14px;
-    background: linear-gradient(135deg, #2b68dc 0%, #2b68dc 100%);
+    background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%);
     color: white;
     border: none;
     border-radius: 8px;
@@ -544,7 +544,7 @@
 }
 
 .password-submit-btn:hover {
-    background: linear-gradient(135deg, #2b68dc 0%, #2b68dc 100%);
+    background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(13, 74, 31, 0.4);
 }

@@ -1881,7 +1881,7 @@ class GlossaryManager {
 
                 <div style="display: flex; gap: 10px; justify-content: flex-end;">
                     <button id="cancelPreviewBtn" style="padding: 10px 20px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; font-size: 14px; color: #666;">취소</button>
-                    <button id="confirmPreviewBtn" style="padding: 10px 20px; background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;">확인</button>
+                    <button id="confirmPreviewBtn" style="padding: 10px 20px; background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;">확인</button>
                 </div>
             </div>
         `;

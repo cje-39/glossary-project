@@ -1,0 +1,157 @@
+<style>
+/* 기본 스타일 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Pretendard', 'Nanum Gothic', sans-serif;
+    background: #f5f5f5;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* Hub 페이지 스타일 */
+.hub-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+}
+
+.hub-header {
+    text-align: left;
+    margin-bottom: 50px;
+}
+
+.hub-header h1 {
+    font-size: 2.5em;
+    color: #1a1a1a;
+    margin-bottom: 10px;
+}
+
+.hub-subtitle {
+    color: #666;
+    font-size: 1.1em;
+    margin-top: 8px;
+}
+
+.hub-nav {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px;
+    margin-bottom: 60px;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.nav-card {
+    background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 50%, #2a2a2a 100%);
+    border-radius: 12px;
+    padding: 30px 24px;
+    box-shadow: 0 4px 12px rgba(42, 42, 42, 0.4);
+    text-decoration: none;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+    aspect-ratio: 2 / 1;
+}
+
+.nav-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 8px 24px rgba(42, 42, 42, 0.6);
+}
+
+.nav-icon {
+    font-size: 3.2em;
+    margin-bottom: 16px;
+}
+
+.nav-card h2 {
+    font-size: 1.4em;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 10px;
+}
+
+.nav-card p {
+    color: #e0e0e0;
+    font-size: 0.9em;
+    margin-bottom: 16px;
+}
+
+.nav-arrow {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    font-size: 1.5em;
+    color: #ffffff;
+    opacity: 0.7;
+    transition: all 0.3s;
+}
+
+.nav-card:hover .nav-arrow {
+    opacity: 1;
+    transform: translateX(5px);
+}
+
+.hub-footer {
+    text-align: center;
+    padding-top: 40px;
+    border-top: 2px solid #e0e0e0;
+    color: #666;
+    font-size: 0.9em;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .hub-nav {
+        grid-template-columns: 1fr;
+    }
+    
+    .hub-header h1 {
+        font-size: 2em;
+    }
+}
+
+/* 버튼 스타일 */
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(249, 66, 58, 0.3);
+}
+
+.btn-secondary {
+    background: #f5f5f5;
+    color: #333;
+    border: 1px solid #ddd;
+}
+
+.btn-secondary:hover {
+    background: #e8e8e8;
+}
+</style>

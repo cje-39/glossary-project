@@ -56,6 +56,104 @@
         #apiKeySection.show {
             display: block !important;
         }
+        
+        /* 드래그 앤 드롭 스타일 */
+        .draggable-row {
+            transition: all 0.2s ease;
+        }
+        
+        .draggable-row.dragging {
+            opacity: 0.5;
+            background-color: #e3f2fd !important;
+            transform: scale(0.98);
+        }
+        
+        .draggable-row.drag-over {
+            background-color: #bbdefb !important;
+            border-top: 3px solid #2196F3;
+            border-bottom: 3px solid #2196F3;
+        }
+        
+        .draggable-row:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .draggable-row td {
+            position: relative;
+        }
+        
+        /* 셀 드래그 앤 드롭 스타일 - data-cell-type이 있는 셀만 적용 */
+        .cell-drop-zone[data-cell-type] {
+            position: relative;
+            padding: 12px !important;
+            min-height: 50px;
+            transition: all 0.2s ease;
+        }
+        
+        .cell-drop-zone[data-cell-type].cell-drag-over {
+            background-color: #e3f2fd !important;
+            border: 3px solid #2196F3 !important;
+            padding: 15px !important;
+            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3) !important;
+        }
+        
+        /* KOR 셀 드롭 오버 효과 */
+        .cell-drop-zone[data-cell-type="korean"].cell-drag-over {
+            background-color: #bbdefb !important;
+            border: 3px solid #2196F3 !important;
+            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3) !important;
+        }
+        
+        /* JPN 셀 드롭 오버 효과 */
+        .cell-drop-zone[data-cell-type="japanese"].cell-drag-over {
+            background-color: #c8e6c9 !important;
+            border: 3px solid #4caf50 !important;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3) !important;
+        }
+        
+        /* KOR 셀 마우스 오버 효과 - 더 명확하게 */
+        .cell-drop-zone[data-cell-type="korean"]:hover {
+            background-color: #bbdefb !important;
+            border: 2px solid #2196F3 !important;
+            box-shadow: 0 1px 4px rgba(33, 150, 243, 0.2) !important;
+        }
+        
+        /* JPN 셀 마우스 오버 효과 - 더 명확하게 */
+        .cell-drop-zone[data-cell-type="japanese"]:hover {
+            background-color: #c8e6c9 !important;
+            border: 2px solid #4caf50 !important;
+            box-shadow: 0 1px 4px rgba(76, 175, 80, 0.2) !important;
+        }
+        
+        /* 체크박스는 항상 클릭 가능하도록 */
+        input[type="checkbox"] {
+            cursor: pointer !important;
+            pointer-events: auto !important;
+            z-index: 10 !important;
+        }
+        
+        .draggable-cell {
+            transition: all 0.2s ease;
+            width: 100%;
+            min-height: 36px;
+            box-sizing: border-box;
+        }
+        
+        .draggable-cell:hover {
+            background-color: transparent !important;
+        }
+        
+        /* KOR 입력 필드 마우스 오버 */
+        .extracted-kor-input:hover {
+            background-color: #e3f2fd !important;
+            border-color: #2196F3 !important;
+        }
+        
+        /* JPN 입력 필드 마우스 오버 */
+        .extracted-jpn-input:hover {
+            background-color: #e8f5e9 !important;
+            border-color: #4caf50 !important;
+        }
     </style>
 </head>
 <body>
@@ -137,6 +235,18 @@
                             <button id="deleteSelectedExtractedBtn" class="btn btn-danger" style="display: none; padding: 8px 16px; font-size: 13px;" onclick="if(window.pptExtractor) window.pptExtractor.deleteSelectedRows()">
                                 선택 항목 삭제
                             </button>
+                            <button id="extractedKorUpBtn" class="btn" style="display: none; padding: 8px 14px; font-size: 12px; white-space: nowrap; background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%); color: white; border: none; border-radius: 4px; cursor: pointer; transition: all 0.2s;" onclick="if(window.pptExtractor) window.pptExtractor.moveSelectedKorUp()">
+                                KOR ↑
+                            </button>
+                            <button id="extractedKorDownBtn" class="btn" style="display: none; padding: 8px 14px; font-size: 12px; white-space: nowrap; background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%); color: white; border: none; border-radius: 4px; cursor: pointer; transition: all 0.2s;" onclick="if(window.pptExtractor) window.pptExtractor.moveSelectedKorDown()">
+                                KOR ↓
+                            </button>
+                            <button id="extractedJpnUpBtn" class="btn" style="display: none; padding: 8px 14px; font-size: 12px; white-space: nowrap; background: linear-gradient(135deg, #27ae60 0%, #229954 100%); color: white; border: none; border-radius: 4px; cursor: pointer; transition: all 0.2s;" onclick="if(window.pptExtractor) window.pptExtractor.moveSelectedJpnUp()">
+                                JPN ↑
+                            </button>
+                            <button id="extractedJpnDownBtn" class="btn" style="display: none; padding: 8px 14px; font-size: 12px; white-space: nowrap; background: linear-gradient(135deg, #27ae60 0%, #229954 100%); color: white; border: none; border-radius: 4px; cursor: pointer; transition: all 0.2s;" onclick="if(window.pptExtractor) window.pptExtractor.moveSelectedJpnDown()">
+                                JPN ↓
+                            </button>
                         </div>
                     </div>
                     <div class="table-container">
@@ -195,7 +305,13 @@
 
         <!-- 파일 목록 섹션 -->
         <div id="fileListSection" style="margin: 20px 0; padding: 20px; background: #f9f9f9; border-radius: 12px; border: 1px solid #e0e0e0;">
-            <h3 style="font-size: 1.2em; margin-bottom: 15px; color: #1a1a1a;">코퍼스 목록</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="font-size: 1.2em; margin: 0; color: #1a1a1a;">코퍼스 목록</h3>
+                <button id="addFolderBtn" class="btn btn-primary" style="padding: 8px 16px; font-size: 14px; background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%); color: white; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s;">📁 폴더 추가</button>
+            </div>
+            <div id="folderList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                <!-- 폴더 목록이 여기에 동적으로 추가됩니다 -->
+            </div>
             <div id="fileListGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
                 <!-- 파일 카드들이 여기에 동적으로 추가됩니다 -->
             </div>
@@ -205,9 +321,21 @@
         <div id="corpusListSection" style="display: none; margin-top: 30px;">
             <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
                 <h3 id="selectedFileTitle" style="font-size: 1em; color: #1a1a1a; margin: 0;"></h3>
-                <div style="display: flex; gap: 8px; align-items: center;">
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                     <button id="addToGlossaryBtn" class="btn" style="padding: 8px 14px; font-size: 12px; white-space: nowrap; background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%); color: white; border: none; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
                         선택 항목 글로서리에 추가
+                    </button>
+                    <button id="korUpBtn" class="btn" style="padding: 8px 14px; font-size: 12px; white-space: nowrap; background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%); color: white; border: none; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                        KOR ↑
+                    </button>
+                    <button id="korDownBtn" class="btn" style="padding: 8px 14px; font-size: 12px; white-space: nowrap; background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%); color: white; border: none; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                        KOR ↓
+                    </button>
+                    <button id="jpnUpBtn" class="btn" style="padding: 8px 14px; font-size: 12px; white-space: nowrap; background: linear-gradient(135deg, #27ae60 0%, #229954 100%); color: white; border: none; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                        JPN ↑
+                    </button>
+                    <button id="jpnDownBtn" class="btn" style="padding: 8px 14px; font-size: 12px; white-space: nowrap; background: linear-gradient(135deg, #27ae60 0%, #229954 100%); color: white; border: none; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                        JPN ↓
                     </button>
                     <button id="deleteSelectedBtn" class="btn" style="padding: 8px 14px; font-size: 12px; white-space: nowrap; background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%); color: white; border: none; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
                         선택 항목 삭제
@@ -318,7 +446,7 @@
     <script src="auth.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="netlify-config.js"></script>
+    <script src="cloudflare-config.js"></script>
     <script>
         // Firebase SDK 로드 후 스크립트 실행
         (async function() {
@@ -337,14 +465,58 @@
                 console.error('Firebase SDK 로드 실패:', error);
             }
             
-            // 스크립트 로드
+            // 스크립트 로드 (순차적으로)
             const corpusScript = document.createElement('script');
             corpusScript.src = 'corpus.js';
+            corpusScript.onload = () => {
+                console.log('corpus.js 로드 완료');
+                
+                // CorpusManager 초기화
+                setTimeout(() => {
+                    if (typeof CorpusManager !== 'undefined') {
+                        if (!window.corpusManager) {
+                            window.corpusManager = new CorpusManager();
+                            console.log('✅ CorpusManager 초기화 완료');
+                        } else {
+                            console.log('✅ CorpusManager 이미 초기화됨');
+                        }
+                    } else if (typeof initCorpusManager === 'function') {
+                        initCorpusManager();
+                        console.log('✅ initCorpusManager 호출됨');
+                    } else {
+                        console.warn('⚠️ CorpusManager 클래스나 initCorpusManager 함수를 찾을 수 없습니다.');
+                    }
+                }, 100);
+                
+                const pptScript = document.createElement('script');
+                pptScript.src = 'ppt-extractor.js';
+                pptScript.onload = () => {
+                    console.log('ppt-extractor.js 로드 완료');
+                    // PPTExtractor 초기화 완료 대기 (스크립트 내부에서 자동 초기화됨)
+                    setTimeout(() => {
+                        if (window.pptExtractor) {
+                            console.log('✅ PPTExtractor 초기화 확인됨:', window.pptExtractor);
+                        } else {
+                            console.error('❌ PPTExtractor가 초기화되지 않았습니다. 수동으로 초기화 시도...');
+                            // 수동 초기화 시도
+                            if (typeof PPTExtractor !== 'undefined') {
+                                window.pptExtractor = new PPTExtractor();
+                                console.log('✅ PPTExtractor 수동 초기화 완료');
+                            } else {
+                                console.error('❌ PPTExtractor 클래스를 찾을 수 없습니다.');
+                            }
+                        }
+                    }, 1000);
+                };
+                pptScript.onerror = () => {
+                    console.error('ppt-extractor.js 로드 실패');
+                };
+                document.body.appendChild(pptScript);
+            };
+            corpusScript.onerror = () => {
+                console.error('corpus.js 로드 실패');
+            };
             document.body.appendChild(corpusScript);
-            
-            const pptScript = document.createElement('script');
-            pptScript.src = 'ppt-extractor.js';
-            document.body.appendChild(pptScript);
         })();
     </script>
 </body>

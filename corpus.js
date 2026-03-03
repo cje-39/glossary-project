@@ -700,7 +700,7 @@ class CorpusManager {
         // "전체" 카드
         const allCard = document.createElement('div');
         const isAllSelected = this.selectedFolderId === null && this.isAllExpanded;
-        allCard.style.cssText = 'padding: 20px; background: white; border-radius: 8px; border: 2px solid ' + (isAllSelected ? '#4a90e2' : '#e0e0e0') + '; cursor: pointer; transition: all 0.3s; position: relative; text-align: center;';
+        allCard.style.cssText = 'padding: 20px; background: white; border-radius: 8px; border: 2px solid ' + (isAllSelected ? '#f9423a' : '#e0e0e0') + '; cursor: pointer; transition: all 0.3s; position: relative; text-align: center;';
         allCard.innerHTML = `
             <div style="font-size: 2.5em; margin-bottom: 10px;">📂</div>
             <div style="font-size: 16px; font-weight: 600; color: #333;">전체</div>
@@ -723,7 +723,7 @@ class CorpusManager {
         });
         allCard.addEventListener('mouseenter', () => {
             if (!isAllSelected) {
-                allCard.style.borderColor = '#4a90e2';
+                allCard.style.borderColor = '#f9423a';
                 allCard.style.transform = 'translateY(-2px)';
                 allCard.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
             }
@@ -746,7 +746,7 @@ class CorpusManager {
             
             folderCard.className = 'folder-card';
             folderCard.dataset.folderId = folder.id;
-            folderCard.style.cssText = 'padding: 20px; background: white; border-radius: 8px; border: 2px solid ' + (isSelected ? '#4a90e2' : '#e0e0e0') + '; cursor: pointer; transition: all 0.3s; position: relative; text-align: center; min-height: 120px;';
+            folderCard.style.cssText = 'padding: 20px; background: white; border-radius: 8px; border: 2px solid ' + (isSelected ? '#f9423a' : '#e0e0e0') + '; cursor: pointer; transition: all 0.3s; position: relative; text-align: center; min-height: 120px;';
             folderCard.innerHTML = `
                 <button onclick="event.stopPropagation(); corpusManager.editFolder('${folder.id}')" title="수정" style="position: absolute; top: 8px; right: 32px; background: #f5f5f5; color: #666; border: 1px solid #e0e0e0; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: 14px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: all 0.2s; filter: grayscale(100%);">✏️</button>
                 <button onclick="event.stopPropagation(); corpusManager.deleteFolder('${folder.id}')" title="삭제" style="position: absolute; top: 8px; right: 8px; background: #f5f5f5; color: #666; border: 1px solid #e0e0e0; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-weight: bold;">×</button>
@@ -774,7 +774,7 @@ class CorpusManager {
             // 호버 효과
             folderCard.addEventListener('mouseenter', () => {
                 if (!isSelected) {
-                    folderCard.style.borderColor = '#4a90e2';
+                    folderCard.style.borderColor = '#f9423a';
                     folderCard.style.transform = 'translateY(-2px)';
                     folderCard.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
                 }
@@ -791,7 +791,7 @@ class CorpusManager {
             folderCard.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                folderCard.style.borderColor = '#4a90e2';
+                folderCard.style.borderColor = '#f9423a';
                 folderCard.style.backgroundColor = '#f0f7ff';
                 folderCard.style.transform = 'scale(1.02)';
             });
@@ -799,7 +799,7 @@ class CorpusManager {
             folderCard.addEventListener('dragleave', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                folderCard.style.borderColor = isSelected ? '#4a90e2' : '#e0e0e0';
+                folderCard.style.borderColor = isSelected ? '#f9423a' : '#e0e0e0';
                 folderCard.style.backgroundColor = 'white';
                 folderCard.style.transform = 'scale(1)';
             });
@@ -807,7 +807,7 @@ class CorpusManager {
             folderCard.addEventListener('drop', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                folderCard.style.borderColor = isSelected ? '#4a90e2' : '#e0e0e0';
+                folderCard.style.borderColor = isSelected ? '#f9423a' : '#e0e0e0';
                 folderCard.style.backgroundColor = 'white';
                 folderCard.style.transform = 'scale(1)';
                 
@@ -1920,7 +1920,7 @@ class CorpusManager {
                     </div>
                     <div style="display: flex; gap: 10px; justify-content: flex-end;">
                         <button type="button" onclick="corpusManager.closeFolderModal()" class="btn btn-secondary" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">취소</button>
-                        <button type="submit" class="btn btn-primary" style="padding: 10px 20px; background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%); color: white; border: none; border-radius: 4px; cursor: pointer;">저장</button>
+                        <button type="submit" class="btn btn-primary" style="padding: 10px 20px; background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%); color: white; border: none; border-radius: 4px; cursor: pointer;">저장</button>
                     </div>
                 </form>
             </div>

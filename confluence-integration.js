@@ -454,7 +454,7 @@ class ConfluenceIntegration {
             background: white;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-            border: 2px solid #4a90e2;
+            border: 2px solid #f9423a;
             z-index: 10000;
             font-family: 'Pretendard', 'Nanum Gothic', sans-serif;
         `;
@@ -480,7 +480,7 @@ ${pagesList}
             </div>
             <div style="padding: 15px; display: flex; gap: 10px; justify-content: flex-end;">
                 <button id="laterNotificationBtn" style="padding: 10px 20px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; font-size: 14px; color: #666;">나중에</button>
-                <button id="extractTermsBtn" style="padding: 10px 20px; background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; box-shadow: 0 2px 4px rgba(74, 144, 226, 0.3);">용어 추출하기</button>
+                <button id="extractTermsBtn" style="padding: 10px 20px; background: linear-gradient(135deg, #f9423a 0%, #f9423a 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; box-shadow: 0 2px 4px rgba(249, 66, 58, 0.3);">용어 추출하기</button>
             </div>
         `;
 
@@ -528,7 +528,7 @@ ${pagesList}
             `;
             loadingDiv.innerHTML = `
                 <div style="font-size: 16px; color: #333; margin-bottom: 15px;">용어를 추출하는 중...</div>
-                <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #4a90e2; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #f9423a; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
             `;
             document.body.appendChild(loadingDiv);
 
@@ -645,7 +645,7 @@ ${pagesList}
                     <div id="categorySelectRadio" style="margin-bottom: 20px;"></div>
                     <div style="display: flex; gap: 10px; justify-content: flex-end;">
                         <button id="modalCancelBtn" style="padding: 10px 20px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 6px; cursor: pointer;">취소</button>
-                        <button id="modalConfirmBtn" style="padding: 10px 20px; background: #4a90e2; color: white; border: none; border-radius: 6px; cursor: pointer;">확인</button>
+                        <button id="modalConfirmBtn" style="padding: 10px 20px; background: #f9423a; color: white; border: none; border-radius: 6px; cursor: pointer;">확인</button>
                     </div>
                 </div>
             `;
