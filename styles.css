@@ -129,7 +129,7 @@ header {
 
 header h1 {
     color: #1a1a1a;
-    font-size: 2.2em;
+    font-size: 1.76em; /* 2.2em * 0.8 */
     margin-bottom: 10px;
     font-family: 'KraftonFont', 'Pretendard', 'Nanum Gothic', 나눔고딕, sans-serif;
     font-weight: normal;
@@ -364,7 +364,7 @@ header h1::after {
 }
 
 .category-card-title {
-    font-size: 1.4em;
+    font-size: 1.12em; /* 1.4em * 0.8 */
     font-weight: 700;
     color: #1a1a1a;
     margin-bottom: 0;
@@ -403,7 +403,7 @@ header h1::after {
 }
 
 .category-card-name {
-    font-size: 1.2em;
+    font-size: 0.96em; /* 1.2em * 0.8 */
     color: #1a1a1a;
     margin-bottom: 6px;
     line-height: 1.1;
@@ -448,7 +448,7 @@ header h1::after {
 }
 
 .term-list-header h2 {
-    font-size: 1.8em;
+    font-size: 1.44em; /* 1.8em * 0.8 */
     font-weight: 700;
     color: #1a1a1a;
     font-family: 'KraftonFont', 'Pretendard', 'Nanum Gothic', 나눔고딕, sans-serif;

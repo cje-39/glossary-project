@@ -37,7 +37,7 @@
 
 .hub-header h1 {
     font-family: 'KraftonFont', 'Pretendard', 'Nanum Gothic', 나눔고딕, sans-serif;
-    font-size: 2.5em;
+    font-size: 2em; /* 2.5em * 0.8 */
     color: #1a1a1a;
     margin-bottom: 10px;
     line-height: 1.2;
@@ -93,7 +93,7 @@
 
 .nav-card h2 {
     font-family: 'KraftonFont', 'Pretendard', 'Nanum Gothic', 나눔고딕, sans-serif;
-    font-size: 1.4em;
+    font-size: 1.12em; /* 1.4em * 0.8 */
     font-weight: 700;
     color: #ffffff;
     margin-bottom: 10px;
@@ -203,7 +203,7 @@
 
 .login-modal-content h2 {
     margin: 0 0 10px 0;
-    font-size: 1.8em;
+    font-size: 1.44em; /* 1.8em * 0.8 */
     color: #1a1a1a;
     font-family: 'KraftonFont', 'Pretendard', 'Nanum Gothic', 나눔고딕, sans-serif;
 }
@@ -472,7 +472,7 @@
 
 .password-modal-content h2 {
     margin: 0 0 10px 0;
-    font-size: 1.8em;
+    font-size: 1.44em; /* 1.8em * 0.8 */
     color: #1a1a1a;
     font-family: 'KraftonFont', 'Pretendard', 'Nanum Gothic', 나눔고딕, sans-serif;
 }

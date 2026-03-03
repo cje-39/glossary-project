@@ -10,8 +10,16 @@
     margin-bottom: 40px;
 }
 
+/* 해결된 게시물 섹션 배경색 */
+.posts-section.resolved-section {
+    background: #f0f7ff;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid #c8e1ff;
+}
+
 .section-title {
-    font-size: 1.8em;
+    font-size: 1.44em; /* 1.8em * 0.8 */
     font-weight: 700;
     color: #1a1a1a;
     margin-bottom: 20px;
