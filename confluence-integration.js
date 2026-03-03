@@ -31,7 +31,12 @@ class ConfluenceIntegration {
                     this.monitoredPages = settings.monitoredPages || [];
                     this.checkInterval = settings.checkInterval || this.checkInterval;
                     this.lastCheckTime = settings.lastCheckTime || null;
+                    this.lastPageCheckTime = settings.lastPageCheckTime || null;
                     this.autoCheckEnabled = settings.autoCheckEnabled !== undefined ? settings.autoCheckEnabled : true;
+                    console.log('RealtimeDB에서 설정 로드 완료:', {
+                        autoCheckEnabled: this.autoCheckEnabled,
+                        checkInterval: this.checkInterval
+                    });
                 }
             } else {
                 // LocalStorage 폴백
@@ -45,6 +50,10 @@ class ConfluenceIntegration {
                     this.lastCheckTime = settings.lastCheckTime || null;
                     this.lastPageCheckTime = settings.lastPageCheckTime || null;
                     this.autoCheckEnabled = settings.autoCheckEnabled !== undefined ? settings.autoCheckEnabled : true;
+                    console.log('LocalStorage에서 설정 로드 완료:', {
+                        autoCheckEnabled: this.autoCheckEnabled,
+                        checkInterval: this.checkInterval
+                    });
                 }
             }
         } catch (error) {
@@ -67,10 +76,13 @@ class ConfluenceIntegration {
         try {
             if (window.RealtimeDBHelper) {
                 await RealtimeDBHelper.set('settings/confluence', settings);
+                console.log('RealtimeDB에 설정 저장 완료:', settings);
             }
             localStorage.setItem('confluenceSettings', JSON.stringify(settings));
+            console.log('LocalStorage에 설정 저장 완료:', settings);
         } catch (error) {
             console.error('Confluence 설정 저장 실패:', error);
+            throw error;
         }
     }
 

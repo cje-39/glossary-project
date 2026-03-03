@@ -279,7 +279,12 @@
                         // 자동 가져오기 설정 표시
                         const autoCheckCheckbox = document.getElementById('autoCheckEnabled');
                         if (autoCheckCheckbox) {
-                            autoCheckCheckbox.checked = window.confluenceIntegration.autoCheckEnabled !== false;
+                            // 명시적으로 boolean 값으로 설정
+                            const isEnabled = window.confluenceIntegration.autoCheckEnabled !== undefined 
+                                ? window.confluenceIntegration.autoCheckEnabled 
+                                : true;
+                            autoCheckCheckbox.checked = isEnabled;
+                            console.log('자동 가져오기 설정 UI 업데이트:', isEnabled);
                         }
 
                         // 가져오기 주기 표시
@@ -779,15 +784,23 @@
                     try {
                         await window.confluenceIntegration.saveSettings();
                         
+                        console.log('설정 저장 완료:', {
+                            autoCheckEnabled: window.confluenceIntegration.autoCheckEnabled,
+                            checkInterval: window.confluenceIntegration.checkInterval
+                        });
+                        
                         // 자동 가져오기 설정에 따라 주기적 체크 시작/중지
                         if (window.confluenceIntegration.autoCheckEnabled) {
                             window.confluenceIntegration.startPeriodicCheck();
+                            console.log('자동 가져오기 시작됨');
                         } else {
                             window.confluenceIntegration.stopPeriodicCheck();
+                            console.log('자동 가져오기 중지됨');
                         }
 
                         alert('설정이 저장되었습니다.');
                     } catch (error) {
+                        console.error('설정 저장 실패:', error);
                         alert('설정 저장에 실패했습니다: ' + error.message);
                     }
                 },
