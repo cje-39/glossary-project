@@ -44,10 +44,15 @@ class MeetingManager {
         // 수정 버튼
         const editBtn = document.getElementById('editBtn');
         if (editBtn) {
-            editBtn.addEventListener('click', () => {
+            editBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 if (this.viewingId) {
+                    const id = this.viewingId;
                     this.closeDetailModal();
-                    this.openEditModal(this.viewingId);
+                    // 모달이 완전히 닫힌 후 수정 모달 열기
+                    setTimeout(() => {
+                        this.openEditModal(id);
+                    }, 100);
                 }
             });
         }
