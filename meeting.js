@@ -406,6 +406,43 @@ class MeetingManager {
                 assigneeHtml = `<span class="meeting-tag">${this.escapeHtml(meeting.assignee)}</span>`;
             }
             
+            // 검색어 하이라이트 적용
+            const highlightedTitle = this.searchQuery 
+                ? this.highlightSearchTerm(meeting.title, this.searchQuery)
+                : this.escapeHtml(meeting.title);
+            
+            const highlightedContent = this.searchQuery 
+                ? this.highlightSearchTerm((meeting.content || '-').trimStart(), this.searchQuery)
+                : this.escapeHtml((meeting.content || '-').trimStart());
+            
+            const highlightedNotes = this.searchQuery && meeting.notes
+                ? this.highlightSearchTerm(meeting.notes.trimStart(), this.searchQuery)
+                : (meeting.notes ? this.escapeHtml(meeting.notes.trimStart()) : '');
+            
+            // 담당자와 참석자도 하이라이트
+            let highlightedAssigneeHtml = assigneeHtml;
+            if (this.searchQuery && meeting.assignee) {
+                if (Array.isArray(meeting.assignee)) {
+                    highlightedAssigneeHtml = meeting.assignee.map(a => {
+                        const highlighted = this.highlightSearchTerm(a, this.searchQuery);
+                        return `<span class="meeting-tag">${highlighted}</span>`;
+                    }).join('');
+                } else {
+                    const highlighted = this.highlightSearchTerm(meeting.assignee, this.searchQuery);
+                    highlightedAssigneeHtml = `<span class="meeting-tag">${highlighted}</span>`;
+                }
+            }
+            
+            let highlightedAttendeesHtml = attendeesHtml;
+            if (this.searchQuery && meeting.attendees && meeting.attendees.length > 0) {
+                highlightedAttendeesHtml = meeting.attendees.map(a => {
+                    const highlighted = this.highlightSearchTerm(a, this.searchQuery);
+                    return `<span class="meeting-tag">${highlighted}</span>`;
+                }).join('');
+            } else if (this.searchQuery && attendeesHtml === '없음') {
+                highlightedAttendeesHtml = '없음';
+            }
+            
             html += `
                 <div class="meeting-item" onclick="window.meetingManager && window.meetingManager.viewMeeting('${meeting.id}')">
                     <div class="meeting-item-header">
@@ -413,27 +450,27 @@ class MeetingManager {
                             <span class="meeting-tag" style="background-color: ${categoryColor}20; border: 1px solid ${categoryColor}60; color: ${categoryColor}; font-weight: 600;">
                                 ${this.escapeHtml(categoryDisplayName)}
                             </span>
-                            <h3 class="meeting-item-title">${this.escapeHtml(meeting.title)}</h3>
+                            <h3 class="meeting-item-title">${highlightedTitle}</h3>
                         </div>
                         <div class="meeting-item-meta">
                             <span>${formattedDate}</span>
                         </div>
                     </div>
                     <div style="margin-top: 12px; margin-bottom: 8px; display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.9em; color: #666;">
-                        <div><strong>담당자:</strong> ${assigneeHtml}</div>
-                        <div><strong>참석자:</strong> ${attendeesHtml}</div>
+                        <div><strong>담당자:</strong> ${highlightedAssigneeHtml}</div>
+                        <div><strong>참석자:</strong> ${highlightedAttendeesHtml}</div>
                     </div>
                     <div style="margin-top: 12px;">
                         <strong style="color: #333; display: block; margin-bottom: 4px;">논의 내용:</strong>
                         <div style="background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 0 4px; white-space: pre-wrap; line-height: 1.3; display: block; width: 100%; color: #333; text-indent: 0 !important; margin: 0; padding-left: 4px !important;">
-                            <span style="display: block; text-indent: 0; margin: 0; padding: 0;">${this.escapeHtml((meeting.content || '-').trimStart())}</span>
+                            <span style="display: block; text-indent: 0; margin: 0; padding: 0;">${highlightedContent}</span>
                         </div>
                     </div>
                     ${meeting.notes ? `
                     <div style="margin-top: 12px;">
                         <strong style="color: #333; display: block; margin-bottom: 4px;">참고 사항:</strong>
                         <div style="background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 0 4px; white-space: pre-wrap; line-height: 1.3; display: block; width: 100%; color: #666; text-indent: 0 !important; margin: 0; padding-left: 4px !important;">
-                            <span style="display: block; text-indent: 0; margin: 0; padding: 0;">${this.escapeHtml(meeting.notes.trimStart())}</span>
+                            <span style="display: block; text-indent: 0; margin: 0; padding: 0;">${highlightedNotes}</span>
                         </div>
                     </div>
                     ` : ''}
