@@ -841,17 +841,20 @@ class MeetingManager {
             const startDateStr = monday.toISOString().split('T')[0];
             const endDateStr = sunday.toISOString().split('T')[0];
 
-            const apiUrl = `https://api.teamup.com/${this.teamupCalendarId}/events?startDate=${startDateStr}&endDate=${endDateStr}`;
+            // Netlify Functions를 통해 TeamUP API 호출
+            const apiUrl = typeof getTeamupApiUrl !== 'undefined' 
+                ? getTeamupApiUrl() 
+                : 'https://monumental-kringle-4c13b3.netlify.app/.netlify/functions/teamup';
             
-            const response = await fetch(apiUrl, {
-                headers: {
-                    'Teamup-Token': this.teamupApiKey
-                }
+            const functionsUrl = `${apiUrl}?calendarId=${this.teamupCalendarId}&apiKey=${encodeURIComponent(this.teamupApiKey)}&startDate=${startDateStr}&endDate=${endDateStr}`;
+            
+            const response = await fetch(functionsUrl, {
+                method: 'GET'
             });
 
             if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`API 요청 실패: ${response.status} ${response.statusText}. ${errorText}`);
+                const errorData = await response.json();
+                throw new Error(errorData.error || `API 요청 실패: ${response.status} ${response.statusText}`);
             }
 
             const data = await response.json();
