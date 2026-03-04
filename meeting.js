@@ -337,6 +337,7 @@ class MeetingManager {
         let html = `
             <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
                 <div style="display: flex; align-items: center; gap: 10px;">
+                    ${this.searchQuery ? `<span style="color: #666; font-size: 0.9em;">검색 결과: <strong>${filteredMeetings.length}</strong>개</span>` : ''}
                     <span style="color: #666; font-size: 0.9em;">정렬:</span>
                     <span style="color: #333; font-weight: 600; cursor: pointer; user-select: none; padding: 6px 12px; border-radius: 4px; background: #f8f9fa; transition: background 0.2s;" 
                           onclick="window.meetingManager && window.meetingManager.toggleDateSort()"
