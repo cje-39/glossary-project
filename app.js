@@ -524,8 +524,9 @@ class GlossaryManager {
             const categoryColor = this.categoryColors[category] || '#6c757d';
             label.innerHTML = `
                 <input type="checkbox" value="${category}" class="category-filter-checkbox">
-                <span class="category-color-box" style="display: inline-block; width: 16px; height: 16px; background-color: ${categoryColor}; border: 1px solid rgba(0,0,0,0.1); border-radius: 3px; margin-right: 6px; vertical-align: middle;"></span>
-                <span>${displayName}</span>
+                <span class="category-tag" style="display: inline-block; padding: 4px 8px; background-color: ${categoryColor}20; border: 1px solid ${categoryColor}60; border-radius: 4px; color: ${categoryColor}; font-size: 0.85em; font-weight: 600; margin-right: 6px;">
+                    ${displayName}
+                </span>
             `;
             container.appendChild(label);
         });
@@ -558,8 +559,9 @@ class GlossaryManager {
             const categoryColor = this.categoryColors[category] || '#6c757d';
             label.innerHTML = `
                 <input type="checkbox" value="${category}" class="category-filter-checkbox-main">
-                <span class="category-color-box" style="display: inline-block; width: 16px; height: 16px; background-color: ${categoryColor}; border: 1px solid rgba(0,0,0,0.1); border-radius: 3px; margin-right: 6px; vertical-align: middle;"></span>
-                <span>${displayName}</span>
+                <span class="category-tag" style="display: inline-block; padding: 4px 8px; background-color: ${categoryColor}20; border: 1px solid ${categoryColor}60; border-radius: 4px; color: ${categoryColor}; font-size: 0.85em; font-weight: 600; margin-right: 6px;">
+                    ${displayName}
+                </span>
             `;
             container.appendChild(label);
         });
@@ -745,8 +747,7 @@ class GlossaryManager {
                     ? term.category.map(cat => {
                         const catColor = this.categoryColors[cat] || '#6c757d';
                         const catDisplayName = cat.replace(/^#/, '');
-                        return `<span class="category-tag" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background-color: ${catColor}20; border: 1px solid ${catColor}40; border-radius: 4px; color: ${catColor}; font-size: 12px;">
-                            <span style="display: inline-block; width: 10px; height: 10px; background-color: ${catColor}; border-radius: 2px; flex-shrink: 0;"></span>
+                        return `<span class="category-tag" style="display: inline-block; padding: 4px 8px; background-color: ${catColor}20; border: 1px solid ${catColor}60; border-radius: 4px; color: ${catColor}; font-size: 0.85em; font-weight: 600; margin-right: 4px;">
                             ${this.escapeHtml(catDisplayName)}
                         </span>`;
                     }).join(' ')
@@ -1186,8 +1187,9 @@ class GlossaryManager {
             const categoryColor = this.categoryColors[category] || '#6c757d';
             label.innerHTML = `
                 <input type="checkbox" value="${category}" class="category-checkbox">
-                <span class="category-color-box" style="display: inline-block; width: 16px; height: 16px; background-color: ${categoryColor}; border: 1px solid rgba(0,0,0,0.1); border-radius: 3px; margin-right: 6px; vertical-align: middle;"></span>
-                <span>${this.escapeHtml(displayName)}</span>
+                <span class="category-tag" style="display: inline-block; padding: 4px 8px; background-color: ${categoryColor}20; border: 1px solid ${categoryColor}60; border-radius: 4px; color: ${categoryColor}; font-size: 0.85em; font-weight: 600; margin-right: 6px;">
+                    ${this.escapeHtml(displayName)}
+                </span>
             `;
             
             // 체크박스 상태 변경 시 스타일 업데이트

@@ -241,13 +241,13 @@ class MeetingManager {
                 }
             });
             
-            const colorBox = document.createElement('span');
-            colorBox.className = 'category-color-box';
-            colorBox.style.cssText = `display: inline-block; width: 16px; height: 16px; background-color: ${categoryColor}; border: 1px solid rgba(0,0,0,0.1); border-radius: 3px; flex-shrink: 0;`;
+            const categoryText = document.createElement('span');
+            categoryText.className = 'meeting-tag';
+            categoryText.style.cssText = `display: inline-block; padding: 4px 8px; background-color: ${categoryColor}20; border: 1px solid ${categoryColor}60; border-radius: 4px; color: ${categoryColor}; font-size: 0.85em; font-weight: 600; margin-right: 6px;`;
+            categoryText.textContent = category.replace(/^#/, '');
             
             label.appendChild(checkbox);
-            label.appendChild(colorBox);
-            label.appendChild(document.createTextNode(category.replace(/^#/, '')));
+            label.appendChild(categoryText);
             filterContainer.appendChild(label);
         });
     }
@@ -298,8 +298,7 @@ class MeetingManager {
                     <div class="meeting-item-header">
                         <div class="meeting-item-title">${this.escapeHtml(meeting.title)}</div>
                         <div class="meeting-item-meta">
-                            <span style="display: inline-flex; align-items: center; gap: 6px;">
-                                <span class="category-color-box" style="display: inline-block; width: 12px; height: 12px; background-color: ${categoryColor}; border: 1px solid rgba(0,0,0,0.1); border-radius: 3px; flex-shrink: 0;"></span>
+                            <span class="meeting-tag" style="background-color: ${categoryColor}20; border: 1px solid ${categoryColor}60; color: ${categoryColor}; font-weight: 600;">
                                 ${this.escapeHtml(categoryDisplayName)}
                             </span>
                             <span>${formattedDate}</span>
@@ -574,8 +573,7 @@ class MeetingManager {
                 <div style="margin-bottom: 20px;">
                     <div style="margin-bottom: 10px;"><strong>일시:</strong> ${formattedDate}</div>
                     <div style="margin-bottom: 10px;"><strong>카테고리:</strong> 
-                        <span style="display: inline-flex; align-items: center; gap: 6px;">
-                            <span class="category-color-box" style="display: inline-block; width: 14px; height: 14px; background-color: ${categoryColor}; border: 1px solid rgba(0,0,0,0.1); border-radius: 3px; flex-shrink: 0;"></span>
+                        <span class="meeting-tag" style="background-color: ${categoryColor}20; border: 1px solid ${categoryColor}60; color: ${categoryColor}; font-weight: 600;">
                             ${this.escapeHtml(categoryDisplayName)}
                         </span>
                     </div>
