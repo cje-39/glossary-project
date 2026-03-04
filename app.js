@@ -112,6 +112,20 @@ class GlossaryManager {
         } catch (error) {
             console.error('Firestore에 카테고리 저장 실패:', error);
         }
+        
+        // 다른 페이지에 변경 알림 (같은 탭에서 다른 페이지가 열려있을 경우)
+        if (window.meetingManager && window.meetingManager.categories) {
+            window.meetingManager.categories = [...this.categories];
+            if (window.meetingManager.renderCategoryFilter) {
+                window.meetingManager.renderCategoryFilter();
+            }
+            if (window.meetingManager.populateCategoryOptions) {
+                window.meetingManager.populateCategoryOptions();
+            }
+            if (window.meetingManager.renderCategoryList) {
+                window.meetingManager.renderCategoryList();
+            }
+        }
     }
 
     // 데이터 로드 (Firestore → LocalStorage → JSON 파일)
