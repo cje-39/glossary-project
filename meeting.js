@@ -426,6 +426,12 @@ class MeetingManager {
         // 담당자 옵션 채우기
         this.populateAssigneeOptions();
 
+        // 삭제 버튼 숨김
+        const deleteBtn = document.getElementById('deleteMeetingBtn');
+        if (deleteBtn) {
+            deleteBtn.style.display = 'none';
+        }
+
         if (modal) modal.classList.add('active');
     }
 
