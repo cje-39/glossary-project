@@ -34,6 +34,16 @@ class GlossaryManager {
             '#tango': '💃'
         };
         
+        // 카테고리별 색상 매핑 (기본 색상)
+        this.categoryColors = {
+            '#dinkum': '#D4A574',
+            '#pubgm': '#4CAF50',
+            '#ADK': '#2196F3',
+            '#palm': '#FF9800',
+            '#inzoi': '#9C27B0',
+            '#tango': '#E91E63'
+        };
+        
         this.init();
     }
 
@@ -42,6 +52,7 @@ class GlossaryManager {
             await this.loadData();
             await this.loadCategories();
             await this.loadCategoryIcons(); // 카테고리 아이콘 로드
+            await this.loadCategoryColors(); // 카테고리 색상 로드
             this.setupEventListeners();
             this.renderCategoryCheckboxes();
             this.renderCategoryFilterMain(); // 메인 카테고리 필터 렌더링
@@ -510,8 +521,10 @@ class GlossaryManager {
             const label = document.createElement('label');
             label.className = 'category-filter-label';
             const displayName = category.replace(/^#/, ''); // 해시태그 제거
+            const categoryColor = this.categoryColors[category] || '#6c757d';
             label.innerHTML = `
                 <input type="checkbox" value="${category}" class="category-filter-checkbox">
+                <span class="category-color-box" style="display: inline-block; width: 16px; height: 16px; background-color: ${categoryColor}; border: 1px solid rgba(0,0,0,0.1); border-radius: 3px; margin-right: 6px; vertical-align: middle;"></span>
                 <span>${displayName}</span>
             `;
             container.appendChild(label);
@@ -542,8 +555,10 @@ class GlossaryManager {
             const label = document.createElement('label');
             label.className = 'category-filter-label';
             const displayName = category.replace(/^#/, ''); // 해시태그 제거
+            const categoryColor = this.categoryColors[category] || '#6c757d';
             label.innerHTML = `
                 <input type="checkbox" value="${category}" class="category-filter-checkbox-main">
+                <span class="category-color-box" style="display: inline-block; width: 16px; height: 16px; background-color: ${categoryColor}; border: 1px solid rgba(0,0,0,0.1); border-radius: 3px; margin-right: 6px; vertical-align: middle;"></span>
                 <span>${displayName}</span>
             `;
             container.appendChild(label);
@@ -727,7 +742,14 @@ class GlossaryManager {
                 }).join('');
                 
                 const categories = term.category && term.category.length > 0 
-                    ? term.category.map(cat => `<span class="category-tag">${cat.replace(/^#/, '')}</span>`).join(' ')
+                    ? term.category.map(cat => {
+                        const catColor = this.categoryColors[cat] || '#6c757d';
+                        const catDisplayName = cat.replace(/^#/, '');
+                        return `<span class="category-tag" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background-color: ${catColor}20; border: 1px solid ${catColor}40; border-radius: 4px; color: ${catColor}; font-size: 12px;">
+                            <span style="display: inline-block; width: 10px; height: 10px; background-color: ${catColor}; border-radius: 2px; flex-shrink: 0;"></span>
+                            ${this.escapeHtml(catDisplayName)}
+                        </span>`;
+                    }).join(' ')
                     : '-';
                 
                 // 검색어 하이라이트
@@ -1161,8 +1183,10 @@ class GlossaryManager {
             const label = document.createElement('label');
             label.className = 'category-checkbox-label';
             const displayName = category.replace(/^#/, ''); // 해시태그 제거
+            const categoryColor = this.categoryColors[category] || '#6c757d';
             label.innerHTML = `
                 <input type="checkbox" value="${category}" class="category-checkbox">
+                <span class="category-color-box" style="display: inline-block; width: 16px; height: 16px; background-color: ${categoryColor}; border: 1px solid rgba(0,0,0,0.1); border-radius: 3px; margin-right: 6px; vertical-align: middle;"></span>
                 <span>${this.escapeHtml(displayName)}</span>
             `;
             
@@ -1488,6 +1512,7 @@ class GlossaryManager {
             const displayName = category.replace(/^#/, ''); // 해시태그 제거
             const currentIcon = this.categoryIcons[category] || '📚';
             const isImage = currentIcon.includes('<img') || currentIcon.startsWith('data:image');
+            const currentColor = this.categoryColors[category] || '#6c757d';
             
             const item = document.createElement('div');
             item.className = 'category-list-item-integrated';
@@ -1497,7 +1522,7 @@ class GlossaryManager {
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
                             <span style="font-weight: 600; min-width: 100px;">${this.escapeHtml(displayName)}</span>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                             <label style="font-size: 13px; color: #666; min-width: 60px;">아이콘:</label>
                             <div class="icon-preview" style="font-size: 1.5em; min-width: 60px; height: 60px; text-align: center; display: flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0; border-radius: 4px; background: white;">
                                 ${isImage ? currentIcon : currentIcon}
@@ -1513,6 +1538,20 @@ class GlossaryManager {
                                     onclick="window.glossaryManager && window.glossaryManager.removeCategoryIcon('${this.escapeHtml(category)}')">
                                 제거
                             </button>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-size: 13px; color: #666; min-width: 60px;">색상:</label>
+                            <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                <input type="color" 
+                                       class="category-color-input" 
+                                       data-category="${this.escapeHtml(category)}" 
+                                       value="${currentColor}"
+                                       style="width: 60px; height: 40px; border: 1px solid #e0e0e0; border-radius: 4px; cursor: pointer;"
+                                       onchange="window.glossaryManager && window.glossaryManager.handleCategoryColorChange('${this.escapeHtml(category)}', this.value)">
+                                <div class="color-preview" style="width: 60px; height: 40px; background-color: ${currentColor}; border: 1px solid #e0e0e0; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">
+                                    샘플
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1583,6 +1622,29 @@ class GlossaryManager {
         }
     }
     
+    // 카테고리 색상 변경 처리
+    handleCategoryColorChange(categoryName, color) {
+        this.categoryColors[categoryName] = color;
+        this.saveCategoryColors().catch(err => console.error('색상 저장 실패:', err));
+        
+        // 카테고리 목록 다시 렌더링 (색상 미리보기 업데이트)
+        this.renderCategoryList();
+        
+        // 카테고리 필터 다시 렌더링
+        this.renderCategoryFilterMain();
+        this.renderCategoryCheckboxes();
+        
+        // 카테고리 카드 다시 렌더링
+        if (this.currentView === 'categories') {
+            this.renderCategoryCardsInitial();
+        }
+        
+        // 다른 페이지의 필터도 업데이트 (meeting, discussion 등)
+        if (window.meetingManager && window.meetingManager.renderCategoryFilter) {
+            window.meetingManager.renderCategoryFilter();
+        }
+    }
+    
     // 카테고리 아이콘 로드
     async loadCategoryIcons() {
         // 먼저 LocalStorage에서 로드 (기본값)
@@ -1648,6 +1710,78 @@ class GlossaryManager {
             }
         } catch (error) {
             console.error('Firestore에 아이콘 저장 실패:', error);
+            // 저장 실패해도 LocalStorage에는 저장되어 있음
+        }
+    }
+    
+    // 카테고리 색상 로드
+    async loadCategoryColors() {
+        // 먼저 LocalStorage에서 로드 (기본값)
+        const savedColors = localStorage.getItem('categoryColors');
+        if (savedColors) {
+            try {
+                const loadedColors = JSON.parse(savedColors);
+                this.categoryColors = { ...this.categoryColors, ...loadedColors };
+            } catch (error) {
+                console.error('LocalStorage 색상 파싱 실패:', error);
+            }
+        }
+        
+        try {
+            // Firestore에서 로드 (최신 데이터 우선)
+            if (window.FirestoreHelper) {
+                const data = await FirestoreHelper.load('settings', 'categoryColors');
+                if (data && data.colors) {
+                    // Firestore 데이터로 병합 (Firestore가 우선)
+                    this.categoryColors = { ...this.categoryColors, ...data.colors };
+                    // LocalStorage에도 백업 저장
+                    localStorage.setItem('categoryColors', JSON.stringify(this.categoryColors));
+                    console.log('Firestore에서 색상 로드 완료:', Object.keys(data.colors).length, '개');
+                    
+                    // 실시간 동기화 리스너 설정
+                    FirestoreHelper.onSnapshot('settings', 'categoryColors', (data) => {
+                        if (data && data.colors) {
+                            console.log('Firestore 색상 실시간 업데이트:', Object.keys(data.colors).length, '개');
+                            // Firestore 데이터로 병합
+                            this.categoryColors = { ...this.categoryColors, ...data.colors };
+                            localStorage.setItem('categoryColors', JSON.stringify(this.categoryColors));
+                            // 카드 다시 렌더링
+                            if (this.currentView === 'categories') {
+                                this.renderCategoryCardsInitial();
+                            }
+                            // 필터 다시 렌더링
+                            this.renderCategoryFilterMain();
+                            this.renderCategoryCheckboxes();
+                        }
+                    });
+                    return;
+                } else {
+                    console.log('Firestore에 색상 데이터가 없습니다. LocalStorage 사용.');
+                }
+            }
+        } catch (error) {
+            console.error('Firestore에서 색상 로드 실패, LocalStorage 사용:', error);
+        }
+    }
+    
+    // 카테고리 색상 저장
+    async saveCategoryColors() {
+        // LocalStorage에 즉시 저장
+        localStorage.setItem('categoryColors', JSON.stringify(this.categoryColors));
+        console.log('색상 LocalStorage 저장 완료:', Object.keys(this.categoryColors).length, '개');
+        
+        // Firestore에도 저장
+        try {
+            if (window.FirestoreHelper) {
+                await FirestoreHelper.save('settings', 'categoryColors', {
+                    colors: this.categoryColors
+                });
+                console.log('색상 Firestore 저장 완료:', Object.keys(this.categoryColors).length, '개');
+            } else {
+                console.warn('FirestoreHelper를 사용할 수 없습니다.');
+            }
+        } catch (error) {
+            console.error('Firestore에 색상 저장 실패:', error);
             // 저장 실패해도 LocalStorage에는 저장되어 있음
         }
     }
@@ -1749,6 +1883,13 @@ class GlossaryManager {
             this.categoryIcons[newCategory] = this.categoryIcons[category];
             delete this.categoryIcons[category];
             this.saveCategoryIcons().catch(err => console.error('아이콘 저장 실패:', err));
+        }
+        
+        // 카테고리 색상도 업데이트
+        if (this.categoryColors[category]) {
+            this.categoryColors[newCategory] = this.categoryColors[category];
+            delete this.categoryColors[category];
+            this.saveCategoryColors().catch(err => console.error('색상 저장 실패:', err));
         }
         
         // 카테고리 목록 업데이트

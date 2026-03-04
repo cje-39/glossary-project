@@ -113,6 +113,23 @@ class MeetingManager {
             this.categories = ['#dinkum', '#pubgm', '#ADK', '#palm', '#inzoi', '#tango'];
         }
     }
+    
+    // 카테고리 색상 가져오기 (GlossaryManager에서)
+    getCategoryColor(category) {
+        if (window.glossaryManager && window.glossaryManager.categoryColors) {
+            return window.glossaryManager.categoryColors[category] || '#6c757d';
+        }
+        // 기본 색상
+        const defaultColors = {
+            '#dinkum': '#D4A574',
+            '#pubgm': '#4CAF50',
+            '#ADK': '#2196F3',
+            '#palm': '#FF9800',
+            '#inzoi': '#9C27B0',
+            '#tango': '#E91E63'
+        };
+        return defaultColors[category] || '#6c757d';
+    }
 
     // 담당자 목록 로드
     async loadAssignees() {
@@ -209,6 +226,7 @@ class MeetingManager {
         this.categories.forEach(category => {
             const label = document.createElement('label');
             label.className = 'category-filter-label';
+            const categoryColor = this.getCategoryColor(category);
             label.style.cssText = 'cursor: pointer; padding: 6px 12px; border-radius: 6px; transition: background-color 0.2s; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; margin-right: 8px;';
             
             const checkbox = document.createElement('input');
@@ -223,7 +241,12 @@ class MeetingManager {
                 }
             });
             
+            const colorBox = document.createElement('span');
+            colorBox.className = 'category-color-box';
+            colorBox.style.cssText = `display: inline-block; width: 16px; height: 16px; background-color: ${categoryColor}; border: 1px solid rgba(0,0,0,0.1); border-radius: 3px; flex-shrink: 0;`;
+            
             label.appendChild(checkbox);
+            label.appendChild(colorBox);
             label.appendChild(document.createTextNode(category.replace(/^#/, '')));
             filterContainer.appendChild(label);
         });
@@ -267,12 +290,18 @@ class MeetingManager {
                 ? meeting.attendees.map(a => `<span class="meeting-tag">${this.escapeHtml(a)}</span>`).join('')
                 : '없음';
 
+            const categoryColor = this.getCategoryColor(meeting.category);
+            const categoryDisplayName = meeting.category ? meeting.category.replace(/^#/, '') : '';
+            
             return `
                 <div class="meeting-item" onclick="window.meetingManager.viewMeeting('${meeting.id}')">
                     <div class="meeting-item-header">
                         <div class="meeting-item-title">${this.escapeHtml(meeting.title)}</div>
                         <div class="meeting-item-meta">
-                            <span>${this.escapeHtml(meeting.category.replace(/^#/, ''))}</span>
+                            <span style="display: inline-flex; align-items: center; gap: 6px;">
+                                <span class="category-color-box" style="display: inline-block; width: 12px; height: 12px; background-color: ${categoryColor}; border: 1px solid rgba(0,0,0,0.1); border-radius: 3px; flex-shrink: 0;"></span>
+                                ${this.escapeHtml(categoryDisplayName)}
+                            </span>
                             <span>${formattedDate}</span>
                         </div>
                     </div>
@@ -537,11 +566,19 @@ class MeetingManager {
             ? meeting.attendees.map(a => `<span class="meeting-tag">${this.escapeHtml(a)}</span>`).join('')
             : '없음';
 
+        const categoryColor = this.getCategoryColor(meeting.category);
+        const categoryDisplayName = meeting.category ? meeting.category.replace(/^#/, '') : '';
+        
         if (detailContent) {
             detailContent.innerHTML = `
                 <div style="margin-bottom: 20px;">
                     <div style="margin-bottom: 10px;"><strong>일시:</strong> ${formattedDate}</div>
-                    <div style="margin-bottom: 10px;"><strong>카테고리:</strong> ${this.escapeHtml(meeting.category.replace(/^#/, ''))}</div>
+                    <div style="margin-bottom: 10px;"><strong>카테고리:</strong> 
+                        <span style="display: inline-flex; align-items: center; gap: 6px;">
+                            <span class="category-color-box" style="display: inline-block; width: 14px; height: 14px; background-color: ${categoryColor}; border: 1px solid rgba(0,0,0,0.1); border-radius: 3px; flex-shrink: 0;"></span>
+                            ${this.escapeHtml(categoryDisplayName)}
+                        </span>
+                    </div>
                     <div style="margin-bottom: 10px;"><strong>담당자:</strong> ${Array.isArray(meeting.assignee) ? meeting.assignee.map(a => `<span class="meeting-tag">${this.escapeHtml(a)}</span>`).join('') : `<span class="meeting-tag">${this.escapeHtml(meeting.assignee)}</span>`}</div>
                     <div style="margin-bottom: 10px;"><strong>참석자:</strong> ${attendeesHtml}</div>
                 </div>
