@@ -7,7 +7,6 @@ class MeetingManager {
         this.selectedCategoryFilter = null;
         this.editingId = null;
         this.viewingId = null;
-        this.currentAttendeesImage = null; // 현재 편집 중인 참석자 이미지
         this.dateSortOrder = 'desc'; // 'asc' or 'desc' - 기본값은 최신순
         this.init();
     }
@@ -88,147 +87,6 @@ class MeetingManager {
                     this.closeDetailModal();
                 }
             });
-        }
-        
-        // 클립보드 붙여넣기 이벤트 (참석자 이미지)
-        document.addEventListener('paste', (e) => {
-            this.handleAttendeesPaste(e);
-        });
-    }
-    
-    // 참석자 이미지 드래그 오버
-    handleAttendeesImageDragOver(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        const dropZone = document.getElementById('attendeesImageDropZone');
-        if (dropZone) {
-            dropZone.style.borderColor = '#2b68dc';
-            dropZone.style.background = '#f0f4ff';
-        }
-    }
-    
-    // 참석자 이미지 드래그 리브
-    handleAttendeesImageDragLeave(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        const dropZone = document.getElementById('attendeesImageDropZone');
-        if (dropZone) {
-            dropZone.style.borderColor = '#e0e0e0';
-            dropZone.style.background = '#fafafa';
-        }
-    }
-    
-    // 참석자 이미지 드롭
-    handleAttendeesImageDrop(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        const dropZone = document.getElementById('attendeesImageDropZone');
-        if (dropZone) {
-            dropZone.style.borderColor = '#e0e0e0';
-            dropZone.style.background = '#fafafa';
-        }
-        
-        const files = e.dataTransfer.files;
-        if (files && files.length > 0) {
-            const file = files[0];
-            if (file.type.startsWith('image/')) {
-                this.processAttendeesImage(file);
-            } else {
-                alert('이미지 파일만 업로드 가능합니다.');
-            }
-        }
-    }
-    
-    // 참석자 이미지 파일 선택
-    handleAttendeesImageSelect(e) {
-        const file = e.target.files[0];
-        if (file) {
-            this.processAttendeesImage(file);
-        }
-    }
-    
-    // 참석자 이미지 처리
-    processAttendeesImage(file) {
-        if (!file.type.startsWith('image/')) {
-            alert('이미지 파일만 업로드 가능합니다.');
-            return;
-        }
-        
-        // 파일 크기 제한 (10MB)
-        if (file.size > 10 * 1024 * 1024) {
-            alert('파일 크기는 10MB 이하여야 합니다.');
-            return;
-        }
-        
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const imageData = e.target.result;
-            this.currentAttendeesImage = imageData;
-            this.updateAttendeesImagePreview(imageData);
-        };
-        reader.onerror = () => {
-            alert('파일을 읽는 중 오류가 발생했습니다.');
-        };
-        reader.readAsDataURL(file);
-    }
-    
-    // 참석자 이미지 미리보기 업데이트
-    updateAttendeesImagePreview(imageData) {
-        const preview = document.getElementById('attendeesImagePreview');
-        const placeholder = document.getElementById('attendeesImagePlaceholder');
-        const previewImg = document.getElementById('attendeesImagePreviewImg');
-        
-        if (preview && placeholder && previewImg) {
-            previewImg.src = imageData;
-            preview.style.display = 'block';
-            placeholder.style.display = 'none';
-        }
-    }
-    
-    // 참석자 이미지 제거
-    removeAttendeesImage() {
-        this.currentAttendeesImage = null;
-        const preview = document.getElementById('attendeesImagePreview');
-        const placeholder = document.getElementById('attendeesImagePlaceholder');
-        
-        if (preview && placeholder) {
-            preview.style.display = 'none';
-            placeholder.style.display = 'block';
-        }
-        
-        const fileInput = document.getElementById('attendeesImageInput');
-        if (fileInput) {
-            fileInput.value = '';
-        }
-    }
-    
-    // 클립보드 붙여넣기 처리 (참석자 이미지)
-    handleAttendeesPaste(e) {
-        // 모달이 열려있고 참석자 입력 영역에 포커스가 있을 때만 처리
-        const modal = document.getElementById('meetingModal');
-        if (!modal || !modal.classList.contains('active')) {
-            return;
-        }
-        
-        const attendeesInput = document.getElementById('meetingAttendees');
-        const dropZone = document.getElementById('attendeesImageDropZone');
-        
-        // 참석자 입력 필드나 드롭존에 포커스가 있을 때만 처리
-        if (!document.activeElement || 
-            (document.activeElement !== attendeesInput && 
-             !dropZone.contains(document.activeElement) &&
-             document.activeElement.tagName !== 'BODY')) {
-            return;
-        }
-        
-        const items = e.clipboardData.items;
-        for (let i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf('image') !== -1) {
-                e.preventDefault();
-                const blob = items[i].getAsFile();
-                this.processAttendeesImage(blob);
-                break;
-            }
         }
     }
 
@@ -456,33 +314,10 @@ class MeetingManager {
                 minute: '2-digit'
             });
 
-            let attendeesHtml = '';
-            if (meeting.attendeesImage) {
-                // 이미지가 있는 경우 - 접힌 상태로 표시
-                attendeesHtml = `
-                    <div style="margin-top: 8px;" onclick="event.stopPropagation();">
-                        <div style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px; background: #fafafa; transition: background 0.2s;" 
-                             onclick="event.stopPropagation(); window.meetingManager && window.meetingManager.toggleAttendeesImage('${meeting.id}', this)"
-                             onmouseover="this.style.background='#f0f0f0'"
-                             onmouseout="this.style.background='#fafafa'">
-                            <span style="font-size: 1.2em;">📷</span>
-                            <span style="color: #666; font-size: 0.9em; font-weight: 500;">참석자 목록 보기</span>
-                            <span style="margin-left: auto; color: #999; font-size: 0.85em;">▼</span>
-                        </div>
-                        <div id="attendeesImage_${meeting.id}" style="display: none; margin-top: 8px;">
-                            <img src="${meeting.attendeesImage}" 
-                                 style="max-width: 100%; max-height: 400px; border-radius: 4px; border: 1px solid #e0e0e0; cursor: pointer;" 
-                                 onclick="event.stopPropagation(); window.meetingManager && window.meetingManager.showAttendeesImageModal('${meeting.id}')"
-                                 title="클릭하여 크게 보기">
-                        </div>
-                    </div>
-                `;
-            } else if (meeting.attendees && meeting.attendees.length > 0) {
-                // 텍스트가 있는 경우
-                attendeesHtml = meeting.attendees.map(a => `<span class="meeting-tag">${this.escapeHtml(a)}</span>`).join('');
-            } else {
-                attendeesHtml = '없음';
-            }
+            // 참석자 표시 (텍스트만)
+            const attendeesHtml = meeting.attendees && meeting.attendees.length > 0
+                ? meeting.attendees.map(a => `<span class="meeting-tag">${this.escapeHtml(a)}</span>`).join('')
+                : '없음';
 
             const categoryColor = this.getCategoryColor(meeting.category);
             const categoryDisplayName = meeting.category ? meeting.category.replace(/^#/, '') : '';
@@ -578,15 +413,6 @@ class MeetingManager {
         
         const dateTimeInput = document.getElementById('meetingDateTime');
         if (dateTimeInput) dateTimeInput.value = dateTimeValue;
-        
-        // 참석자 이미지 초기화
-        this.currentAttendeesImage = null;
-        const preview = document.getElementById('attendeesImagePreview');
-        const placeholder = document.getElementById('attendeesImagePlaceholder');
-        if (preview && placeholder) {
-            preview.style.display = 'none';
-            placeholder.style.display = 'block';
-        }
 
         // 카테고리 옵션 채우기
         this.populateCategoryOptions();
@@ -747,9 +573,6 @@ class MeetingManager {
             ? attendeesInput.split(',').map(a => a.trim()).filter(a => a)
             : [];
         
-        // 참석자 이미지 저장
-        const attendeesImage = this.currentAttendeesImage || null;
-
         if (!dateTime || !category || assignees.length === 0 || !title || !content) {
             alert('필수 항목을 모두 입력해주세요.');
             return;
@@ -764,7 +587,6 @@ class MeetingManager {
             content: content,
             notes: notes || '',
             attendees: attendees,
-            attendeesImage: attendeesImage, // 참석자 이미지 저장
             createdAt: this.editingId 
                 ? this.meetings.find(m => m.id === this.editingId).createdAt 
                 : new Date().toISOString(),
@@ -815,33 +637,10 @@ class MeetingManager {
             minute: '2-digit'
         });
 
-        let attendeesHtml = '';
-        if (meeting.attendeesImage) {
-            // 이미지가 있는 경우 - 접힌 상태로 표시
-            attendeesHtml = `
-                <div style="margin-top: 8px;">
-                    <div style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px; background: #fafafa; transition: background 0.2s;" 
-                         onclick="window.meetingManager && window.meetingManager.toggleAttendeesImage('${meeting.id}', this)"
-                         onmouseover="this.style.background='#f0f0f0'"
-                         onmouseout="this.style.background='#fafafa'">
-                        <span style="font-size: 1.2em;">📷</span>
-                        <span style="color: #666; font-size: 0.9em; font-weight: 500;">참석자 목록 보기</span>
-                        <span style="margin-left: auto; color: #999; font-size: 0.85em;">▼</span>
-                    </div>
-                    <div id="attendeesImageDetail_${meeting.id}" style="display: none; margin-top: 8px;">
-                        <img src="${meeting.attendeesImage}" 
-                             style="max-width: 100%; max-height: 400px; border-radius: 4px; border: 1px solid #e0e0e0; cursor: pointer;" 
-                             onclick="window.meetingManager && window.meetingManager.showAttendeesImageModal('${meeting.id}')"
-                             title="클릭하여 크게 보기">
-                    </div>
-                </div>
-            `;
-        } else if (meeting.attendees && meeting.attendees.length > 0) {
-            // 텍스트가 있는 경우
-            attendeesHtml = meeting.attendees.map(a => `<span class="meeting-tag">${this.escapeHtml(a)}</span>`).join('');
-        } else {
-            attendeesHtml = '없음';
-        }
+        // 참석자 표시 (텍스트만)
+        const attendeesHtml = meeting.attendees && meeting.attendees.length > 0
+            ? meeting.attendees.map(a => `<span class="meeting-tag">${this.escapeHtml(a)}</span>`).join('')
+            : '없음';
 
         const categoryColor = this.getCategoryColor(meeting.category);
         const categoryDisplayName = meeting.category ? meeting.category.replace(/^#/, '') : '';
@@ -914,61 +713,6 @@ class MeetingManager {
         return div.innerHTML;
     }
     
-    // 참석자 이미지 접기/펼치기
-    toggleAttendeesImage(meetingId, toggleButton) {
-        // 목록 뷰에서
-        const listImageDiv = document.getElementById(`attendeesImage_${meetingId}`);
-        // 상세보기 뷰에서
-        const detailImageDiv = document.getElementById(`attendeesImageDetail_${meetingId}`);
-        
-        const imageDiv = listImageDiv || detailImageDiv;
-        if (!imageDiv) return;
-        
-        const isExpanded = imageDiv.style.display !== 'none';
-        const arrow = toggleButton.querySelector('span:last-child');
-        
-        if (isExpanded) {
-            // 접기
-            imageDiv.style.display = 'none';
-            if (arrow) arrow.textContent = '▼';
-        } else {
-            // 펼치기
-            imageDiv.style.display = 'block';
-            if (arrow) arrow.textContent = '▲';
-        }
-    }
-    
-    // 참석자 이미지 모달 표시
-    showAttendeesImageModal(meetingId) {
-        const meeting = this.meetings.find(m => m.id === meetingId);
-        if (!meeting || !meeting.attendeesImage) return;
-        
-        // 모달 생성
-        const modal = document.createElement('div');
-        modal.className = 'meeting-modal';
-        modal.style.display = 'flex';
-        modal.innerHTML = `
-            <div class="meeting-modal-content" style="max-width: 90vw; max-height: 90vh; overflow: auto;">
-                <div class="meeting-modal-header">
-                    <h2>참석자 목록</h2>
-                    <button class="meeting-modal-close" onclick="this.closest('.meeting-modal').remove()">&times;</button>
-                </div>
-                <div style="padding: 20px; text-align: center;">
-                    <img src="${meeting.attendeesImage}" 
-                         style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid #e0e0e0;">
-                </div>
-            </div>
-        `;
-        
-        // 모달 외부 클릭 시 닫기
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.remove();
-            }
-        });
-        
-        document.body.appendChild(modal);
-    }
 }
 
 // 페이지 로드 시 초기화
