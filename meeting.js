@@ -373,14 +373,14 @@ class MeetingManager {
                             ${attendeesHtml}
                         </div>
                     </td>
-                    <td style="padding: 12px; font-size: 0.9em; color: #666; overflow: hidden; word-wrap: break-word;">
-                        <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${this.escapeHtml(meeting.content || '')}">
-                            ${this.escapeHtml(contentPreview)}
+                    <td style="padding: 12px; font-size: 0.9em; color: #666; word-wrap: break-word; white-space: normal;">
+                        <div style="line-height: 1.5;">
+                            ${this.escapeHtml(meeting.content || '-')}
                         </div>
                     </td>
-                    <td style="padding: 12px; font-size: 0.9em; color: #666; overflow: hidden; word-wrap: break-word;">
-                        <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${this.escapeHtml(meeting.notes || '')}">
-                            ${this.escapeHtml(notesPreview)}
+                    <td style="padding: 12px; font-size: 0.9em; color: #666; word-wrap: break-word; white-space: normal;">
+                        <div style="line-height: 1.5;">
+                            ${this.escapeHtml(meeting.notes || '-')}
                         </div>
                     </td>
                     <td style="padding: 6px 8px; text-align: center; white-space: nowrap;">
