@@ -333,8 +333,8 @@ class MeetingManager {
             
             // 담당자 표시
             const assigneeHtml = Array.isArray(meeting.assignee) 
-                ? meeting.assignee.map(a => `<span class="meeting-tag">${this.escapeHtml(a)}</span>`).join('')
-                : `<span class="meeting-tag">${this.escapeHtml(meeting.assignee || '')}</span>`;
+                ? (meeting.assignee.length > 0 ? meeting.assignee.map(a => `<span class="meeting-tag">${this.escapeHtml(a)}</span>`).join('') : '-')
+                : (meeting.assignee ? `<span class="meeting-tag">${this.escapeHtml(meeting.assignee)}</span>` : '-');
             
             // 논의 내용 (요약)
             const contentPreview = meeting.content 
@@ -352,12 +352,15 @@ class MeetingManager {
                     onmouseout="this.style.background='white'">
                     <td style="padding: 12px; color: #666; font-size: 0.9em; white-space: nowrap;">${dateOnly}</td>
                     <td style="padding: 12px;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span class="meeting-tag" style="background-color: ${categoryColor}20; border: 1px solid ${categoryColor}60; color: ${categoryColor}; font-weight: 600; font-size: 0.85em;">
-                                ${this.escapeHtml(categoryDisplayName)}
-                            </span>
-                            <strong style="color: #333; cursor: pointer;" onclick="window.meetingManager && window.meetingManager.viewMeeting('${meeting.id}')">${this.escapeHtml(meeting.title)}</strong>
-                        </div>
+                        <span class="meeting-tag" style="background-color: ${categoryColor}20; border: 1px solid ${categoryColor}60; color: ${categoryColor}; font-weight: 600; font-size: 0.85em;">
+                            ${this.escapeHtml(categoryDisplayName)}
+                        </span>
+                    </td>
+                    <td style="padding: 12px;">
+                        <strong style="color: #333; cursor: pointer;" onclick="window.meetingManager && window.meetingManager.viewMeeting('${meeting.id}')">${this.escapeHtml(meeting.title)}</strong>
+                    </td>
+                    <td style="padding: 12px; font-size: 0.9em;">
+                        ${assigneeHtml}
                     </td>
                     <td style="padding: 12px; font-size: 0.9em;">
                         ${attendeesHtml}
