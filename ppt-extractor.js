@@ -12,6 +12,12 @@ class PPTExtractor {
         this.currentExtractedPage = 1; // 현재 페이지
         this.extractedItemsPerPage = 20; // 페이지당 항목 수
         
+        // 드래그 앤 드롭 관련 변수
+        this.draggedRowIndex = null;
+        this.dragOverRowIndex = null;
+        this.isDragging = false;
+        this.draggedCellType = null; // 'korean', 'japanese', 또는 null (행 전체)
+        
         // DOM이 로드된 후 초기화
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.init());
@@ -38,18 +44,32 @@ class PPTExtractor {
         });
 
         if (koreanInput) {
-            koreanInput.addEventListener('change', (e) => {
-                console.log('한국어 파일 선택 이벤트 발생');
-                this.handleFileSelect(e, 'korean');
+            koreanInput.addEventListener('change', async (e) => {
+                console.log('한국어 파일 선택 이벤트 발생', e.target.files);
+                await this.handleFileSelect(e, 'korean');
+            });
+            // input 이벤트도 추가 (일부 브라우저에서 change가 발생하지 않을 수 있음)
+            koreanInput.addEventListener('input', async (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    console.log('한국어 파일 input 이벤트 발생', e.target.files);
+                    await this.handleFileSelect(e, 'korean');
+                }
             });
         } else {
             console.error('koreanPptInput을 찾을 수 없습니다.');
         }
         
         if (japaneseInput) {
-            japaneseInput.addEventListener('change', (e) => {
-                console.log('일본어 파일 선택 이벤트 발생');
-                this.handleFileSelect(e, 'japanese');
+            japaneseInput.addEventListener('change', async (e) => {
+                console.log('일본어 파일 선택 이벤트 발생', e.target.files);
+                await this.handleFileSelect(e, 'japanese');
+            });
+            // input 이벤트도 추가
+            japaneseInput.addEventListener('input', async (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    console.log('일본어 파일 input 이벤트 발생', e.target.files);
+                    await this.handleFileSelect(e, 'japanese');
+                }
             });
         } else {
             console.error('japanesePptInput을 찾을 수 없습니다.');
@@ -70,6 +90,43 @@ class PPTExtractor {
         const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
         const clearApiKeyBtn = document.getElementById('clearApiKeyBtn');
         const apiKeyInput = document.getElementById('claudeApiKeyInput');
+        
+        // API 키 저장 함수
+        const saveApiKey = async (apiKey) => {
+            // LocalStorage에 즉시 저장
+            localStorage.setItem('claude_api_key', apiKey);
+            
+            // Firestore에도 저장
+            try {
+                if (window.FirestoreHelper) {
+                    await FirestoreHelper.save('settings', 'claude_api_key', {
+                        apiKey: apiKey
+                    });
+                }
+            } catch (error) {
+                console.error('Firestore에 API 키 저장 실패:', error);
+            }
+        };
+        
+        // API 키 로드 함수
+        const loadApiKey = async () => {
+            try {
+                // Firestore에서 먼저 시도
+                if (window.FirestoreHelper) {
+                    const data = await FirestoreHelper.load('settings', 'claude_api_key');
+                    if (data && data.apiKey) {
+                        const apiKey = data.apiKey;
+                        localStorage.setItem('claude_api_key', apiKey);
+                        return apiKey;
+                    }
+                }
+            } catch (error) {
+                console.log('Firestore에서 API 키 로드 실패, LocalStorage 사용:', error);
+            }
+            
+            // LocalStorage에서 로드
+            return localStorage.getItem('claude_api_key');
+        };
         
         // API 키 상태 표시 업데이트 함수
         const updateApiKeyStatus = () => {
@@ -99,10 +156,10 @@ class PPTExtractor {
         };
         
         if (saveApiKeyBtn && apiKeyInput) {
-            saveApiKeyBtn.addEventListener('click', () => {
+            saveApiKeyBtn.addEventListener('click', async () => {
                 const apiKey = apiKeyInput.value.trim();
                 if (apiKey) {
-                    localStorage.setItem('claude_api_key', apiKey);
+                    await saveApiKey(apiKey);
                     updateApiKeyStatus();
                     alert('✅ API 키가 저장되었습니다. 이제 AI 기능을 사용할 수 있습니다.');
                 } else {
@@ -112,8 +169,18 @@ class PPTExtractor {
         }
         
         if (clearApiKeyBtn) {
-            clearApiKeyBtn.addEventListener('click', () => {
+            clearApiKeyBtn.addEventListener('click', async () => {
                 localStorage.removeItem('claude_api_key');
+                // Firestore에서도 삭제
+                try {
+                    if (window.FirestoreHelper) {
+                        await FirestoreHelper.save('settings', 'claude_api_key', {
+                            apiKey: ''
+                        });
+                    }
+                } catch (error) {
+                    console.error('Firestore에서 API 키 삭제 실패:', error);
+                }
                 if (apiKeyInput) apiKeyInput.value = '';
                 updateApiKeyStatus();
                 alert('API 키가 삭제되었습니다.');
@@ -139,12 +206,16 @@ class PPTExtractor {
         
         // 저장된 API 키 로드
         if (apiKeyInput) {
-            const savedKey = localStorage.getItem('claude_api_key');
-            if (savedKey) {
-                apiKeyInput.value = savedKey;
-            }
-            // 초기 상태 표시
-            updateApiKeyStatus();
+            loadApiKey().then(savedKey => {
+                if (savedKey) {
+                    apiKeyInput.value = savedKey;
+                }
+                // 초기 상태 표시
+                updateApiKeyStatus();
+            }).catch(err => {
+                console.error('API 키 로드 실패:', err);
+                updateApiKeyStatus();
+            });
         }
         
         if (addToCorpusBtn) {
@@ -159,15 +230,46 @@ class PPTExtractor {
             console.warn('clearExtractorBtn을 찾을 수 없습니다.');
         }
         
+        // 초기 버튼 상태 업데이트
+        this.updateExtractButton();
+        
+        // 이미 선택된 파일이 있는지 확인하고 처리
+        this.checkExistingFiles();
+        
         console.log('PPTExtractor 초기화 완료');
+    }
+    
+    // 이미 선택된 파일 확인 및 처리
+    async checkExistingFiles() {
+        const koreanInput = document.getElementById('koreanPptInput');
+        const japaneseInput = document.getElementById('japanesePptInput');
+        
+        // 한국어 파일 확인
+        if (koreanInput && koreanInput.files && koreanInput.files.length > 0) {
+            console.log('이미 선택된 한국어 파일 발견:', koreanInput.files[0].name);
+            const event = { target: koreanInput };
+            await this.handleFileSelect(event, 'korean');
+        }
+        
+        // 일본어 파일 확인
+        if (japaneseInput && japaneseInput.files && japaneseInput.files.length > 0) {
+            console.log('이미 선택된 일본어 파일 발견:', japaneseInput.files[0].name);
+            const event = { target: japaneseInput };
+            await this.handleFileSelect(event, 'japanese');
+        }
     }
 
     async handleFileSelect(event, type) {
-        console.log(`handleFileSelect 호출됨 (${type})`, event);
+        console.log(`=== handleFileSelect 호출됨 (${type}) ===`, {
+            event: event,
+            target: event.target,
+            files: event.target.files,
+            fileCount: event.target.files ? event.target.files.length : 0
+        });
         
         const file = event.target.files[0];
         if (!file) {
-            console.log('파일이 선택되지 않음');
+            console.log(`❌ 파일이 선택되지 않음 (${type})`);
             if (type === 'korean') {
                 this.koreanFileData = null;
                 this.koreanFileType = null;
@@ -179,11 +281,17 @@ class PPTExtractor {
             return;
         }
         
+        console.log(`✅ 파일 선택 확인됨 (${type}):`, {
+            name: file.name,
+            size: file.size,
+            type: file.type
+        });
+        
         console.log('파일 선택됨:', file.name, file.size, file.type);
 
         const statusDiv = document.getElementById(`${type}PptStatus`);
         if (statusDiv) {
-            statusDiv.textContent = `파일 선택됨: ${file.name}`;
+            statusDiv.textContent = `⏳ 파일 읽는 중: ${file.name}...`;
             statusDiv.style.color = '#666';
         }
 
@@ -195,6 +303,12 @@ class PPTExtractor {
             
             if (fileType === 'unknown') {
                 throw new Error('지원하지 않는 파일 형식입니다.');
+            }
+            
+            // 파일 읽기 시작
+            if (statusDiv) {
+                statusDiv.textContent = `⏳ 파일 읽는 중: ${file.name}...`;
+                statusDiv.style.color = '#f39c12';
             }
             
             const data = await this.readFile(file, fileType);
@@ -216,12 +330,21 @@ class PPTExtractor {
                 console.warn('파일이 비어있습니다.');
             }
             
+            // 데이터 저장
             if (type === 'korean') {
                 this.koreanFileData = data;
                 this.koreanFileType = fileType;
+                console.log('한국어 파일 데이터 저장 완료:', {
+                    dataLength: data.length,
+                    data: data
+                });
             } else {
                 this.japaneseFileData = data;
                 this.japaneseFileType = fileType;
+                console.log('일본어 파일 데이터 저장 완료:', {
+                    dataLength: data.length,
+                    data: data
+                });
             }
 
             if (statusDiv) {
@@ -232,13 +355,21 @@ class PPTExtractor {
             // 버튼 상태 즉시 업데이트
             this.updateExtractButton();
             
+            // 약간의 지연 후 다시 한 번 확인 (비동기 처리 완료 보장)
+            setTimeout(() => {
+                this.updateExtractButton();
+                console.log('버튼 상태 재확인 완료');
+            }, 100);
+            
             // 추가 확인 (데이터가 제대로 저장되었는지)
             console.log('파일 데이터 저장 후 상태:', {
                 type: type,
                 koreanFileData: !!this.koreanFileData,
                 japaneseFileData: !!this.japaneseFileData,
                 koreanFileDataLength: this.koreanFileData ? this.koreanFileData.length : 0,
-                japaneseFileDataLength: this.japaneseFileData ? this.japaneseFileData.length : 0
+                japaneseFileDataLength: this.japaneseFileData ? this.japaneseFileData.length : 0,
+                koreanFileDataType: this.koreanFileData ? (Array.isArray(this.koreanFileData) ? 'array' : typeof this.koreanFileData) : 'null',
+                japaneseFileDataType: this.japaneseFileData ? (Array.isArray(this.japaneseFileData) ? 'array' : typeof this.japaneseFileData) : 'null'
             });
         } catch (error) {
             console.error('파일 읽기 오류:', error);
@@ -872,19 +1003,11 @@ class PPTExtractor {
             return;
         }
         
-        // 간단한 조건: 데이터가 존재하는지만 확인
-        const hasKorean = !!this.koreanFileData;
-        const hasJapanese = !!this.japaneseFileData;
+        // 데이터가 존재하는지 확인 (null이 아니고 undefined가 아닌 경우)
+        // 빈 배열도 유효한 데이터로 간주
+        const hasKorean = this.koreanFileData !== null && this.koreanFileData !== undefined;
+        const hasJapanese = this.japaneseFileData !== null && this.japaneseFileData !== undefined;
         const isReady = hasKorean && hasJapanese;
-        
-        // disabled 속성을 직접 제거/추가
-        if (isReady) {
-            extractBtn.disabled = false;
-            extractBtn.removeAttribute('disabled');
-        } else {
-            extractBtn.disabled = true;
-            extractBtn.setAttribute('disabled', 'disabled');
-        }
         
         console.log('버튼 상태 업데이트:', {
             isReady: isReady,
@@ -892,18 +1015,45 @@ class PPTExtractor {
             hasJapanese: hasJapanese,
             koreanFileData: this.koreanFileData,
             japaneseFileData: this.japaneseFileData,
-            koreanFileDataLength: this.koreanFileData ? this.koreanFileData.length : 0,
-            japaneseFileDataLength: this.japaneseFileData ? this.japaneseFileData.length : 0
+            koreanFileDataLength: this.koreanFileData ? (Array.isArray(this.koreanFileData) ? this.koreanFileData.length : 'not array') : 0,
+            japaneseFileDataLength: this.japaneseFileData ? (Array.isArray(this.japaneseFileData) ? this.japaneseFileData.length : 'not array') : 0,
+            koreanFileDataType: this.koreanFileData ? (Array.isArray(this.koreanFileData) ? 'array' : typeof this.koreanFileData) : 'null',
+            japaneseFileDataType: this.japaneseFileData ? (Array.isArray(this.japaneseFileData) ? 'array' : typeof this.japaneseFileData) : 'null'
         });
         
-        // 버튼 스타일 업데이트
+        // disabled 속성을 직접 제거/추가
         if (isReady) {
+            // 버튼 활성화
+            extractBtn.disabled = false;
+            extractBtn.removeAttribute('disabled');
             extractBtn.style.cursor = 'pointer';
             extractBtn.style.opacity = '1';
+            extractBtn.style.pointerEvents = 'auto';
+            extractBtn.classList.remove('disabled');
+            
+            console.log('✅ 버튼 활성화됨');
         } else {
+            // 버튼 비활성화
+            extractBtn.disabled = true;
+            extractBtn.setAttribute('disabled', 'disabled');
             extractBtn.style.cursor = 'not-allowed';
             extractBtn.style.opacity = '0.6';
+            extractBtn.style.pointerEvents = 'none';
+            extractBtn.classList.add('disabled');
+            
+            console.log('❌ 버튼 비활성화됨 - 이유:', {
+                hasKorean: hasKorean,
+                hasJapanese: hasJapanese
+            });
         }
+        
+        // DOM에 반영되었는지 확인
+        const isActuallyDisabled = extractBtn.disabled || extractBtn.hasAttribute('disabled');
+        console.log('버튼 실제 상태:', {
+            disabled: isActuallyDisabled,
+            shouldBeDisabled: !isReady,
+            matches: isActuallyDisabled === !isReady
+        });
     }
 
     // 텍스트만 추출 (매칭 없이)
@@ -996,6 +1146,10 @@ class PPTExtractor {
                 }
             }
 
+            // 원본 텍스트 저장 (2차 매칭용)
+            this.originalKoreanTexts = koreanTexts.map(item => typeof item === 'string' ? item : (item?.text || ''));
+            this.originalJapaneseTexts = japaneseTexts.map(item => typeof item === 'string' ? item : (item?.text || ''));
+
             // 위치 기반 매칭 수행
             const matchedPairs = this.matchByPosition(koreanTexts, japaneseTexts);
 
@@ -1034,6 +1188,9 @@ class PPTExtractor {
                 }
             }
 
+            // 빈칸 확인 (한국어만 있거나 일본어만 있는 항목)
+            const hasEmptyCells = parallelRows.some(row => (!row['한국어'] || !row['일본어']) && (row['한국어'] || row['일본어']));
+
             // 결과 저장 및 표시
             this.extractedData = parallelRows;
             this.currentExtractedPage = 1;
@@ -1044,16 +1201,26 @@ class PPTExtractor {
                 extractedCorpusTable.style.display = 'block';
             }
 
+            // 1차 매칭 결과 표시 및 2차 매칭 버튼 추가
             if (infoDiv) {
-                infoDiv.innerHTML = `
+                const emptyCount = parallelRows.filter(row => (!row['한국어'] || !row['일본어']) && (row['한국어'] || row['일본어'])).length;
+                let statusHtml = `
                     <div style="display: flex; align-items: center; gap: 10px; padding: 15px; background: #e8f5e9; border-radius: 8px; border: 1px solid #a5d6a7;">
                         <div style="font-size: 20px;">✅</div>
-                        <div>
-                            <strong style="color: #1a1a1a;">위치 기반 매칭 완료</strong><br>
-                            <small style="color: #666;">총 ${parallelRows.length}개 항목 매칭됨</small>
-                        </div>
-                    </div>
-                `;
+                        <div style="flex: 1;">
+                            <strong style="color: #1a1a1a;">1차 매칭 결과 (위치 기반)</strong><br>
+                            <small style="color: #666;">총 ${parallelRows.length}개 항목 매칭됨`;
+                
+                if (hasEmptyCells) {
+                    statusHtml += ` | 빈칸 ${emptyCount}개 발견</small>`;
+                } else {
+                    statusHtml += `</small>`;
+                }
+                
+                statusHtml += `</div>`;
+                
+                statusHtml += `</div>`;
+                infoDiv.innerHTML = statusHtml;
             }
 
         } catch (error) {
@@ -1064,6 +1231,224 @@ class PPTExtractor {
             alert(`매칭 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`);
         }
     }
+
+    // 2차 매칭 기능 제거됨
+    /*
+    async performSecondaryMatching() {
+        const apiKey = localStorage.getItem('claude_api_key');
+        if (!apiKey || !apiKey.trim()) {
+            alert('Claude API 키가 필요합니다. 설정에서 API 키를 입력해주세요.');
+            return;
+        }
+
+        // API URL 확인 (Cloudflare Workers 사용)
+        const apiUrl = window.getClaudeApiUrl ? window.getClaudeApiUrl() : '/api/claude';
+
+        const infoDiv = document.getElementById('pptExtractInfo');
+        if (!infoDiv) return;
+
+        // 현재 결과에서 매칭되지 않은 텍스트 추출
+        const unmatchedKorean = [];
+        const unmatchedJapanese = [];
+        const matchedIndices = new Set();
+
+        // 빈칸이 있는 행 찾기
+        for (let i = 0; i < this.extractedData.length; i++) {
+            const row = this.extractedData[i];
+            const hasKorean = row['한국어'] && row['한국어'].trim();
+            const hasJapanese = row['일본어'] && row['일본어'].trim();
+
+            if (hasKorean && !hasJapanese) {
+                unmatchedKorean.push({ index: i, text: row['한국어'].trim() });
+            } else if (!hasKorean && hasJapanese) {
+                unmatchedJapanese.push({ index: i, text: row['일본어'].trim() });
+            } else if (hasKorean && hasJapanese) {
+                matchedIndices.add(i);
+            }
+        }
+
+        if (unmatchedKorean.length === 0 && unmatchedJapanese.length === 0) {
+            alert('매칭되지 않은 텍스트가 없습니다.');
+            return;
+        }
+
+        // 진행 상태 표시
+        infoDiv.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px; padding: 15px; background: #f0f7ff; border-radius: 8px; border: 1px solid #b3d9ff;">
+                <div class="spinner" style="width: 20px; height: 20px; border: 3px solid #e0e0e0; border-top: 3px solid #4a90e2; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <div>
+                    <strong style="color: #1a1a1a;">⏳ AI 2차 매칭 중...</strong><br>
+                    <small style="color: #666;">한국어 ${unmatchedKorean.length}개, 일본어 ${unmatchedJapanese.length}개 매칭 중...</small>
+                </div>
+            </div>
+        `;
+
+        try {
+            // Claude API로 매칭 수행
+            const koreanList = unmatchedKorean.map((item, idx) => `${idx + 1}. ${item.text}`).join('\n');
+            const japaneseList = unmatchedJapanese.map((item, idx) => `${idx + 1}. ${item.text}`).join('\n');
+
+            const prompt = `당신은 한일 번역 전문가입니다. 아래 매칭되지 않은 한국어와 일본어 텍스트를 의미가 대응되는 쌍으로 매칭해주세요.
+
+<작업 지침>
+1. 의미가 대응되는 한국어와 일본어를 정확히 매칭하세요
+2. 모든 텍스트를 빠짐없이 매칭하세요 (빈 칸이 없도록)
+3. 매칭이 불가능한 경우도 있을 수 있으니, 가능한 것만 매칭하세요
+</작업 지침>
+
+<매칭되지 않은 한국어 텍스트>
+${koreanList || '(없음)'}
+</매칭되지 않은 한국어 텍스트>
+
+<매칭되지 않은 일본어 텍스트>
+${japaneseList || '(없음)'}
+</매칭되지 않은 일본어 텍스트>
+
+위 텍스트들을 분석하여 매칭 결과를 다음 JSON 형식으로 출력해주세요:
+
+{
+  "matches": [
+    {
+      "korean_index": 1,
+      "japanese_index": 1,
+      "korean_text": "한국어 텍스트",
+      "japanese_text": "일본어 텍스트"
+    },
+    ...
+  ]
+}
+
+각 매칭은 의미가 대응되는 한국어와 일본어 쌍입니다. 한국어 번호와 일본어 번호를 정확히 매칭해주세요.`;
+
+            const apiUrl = window.getClaudeApiUrl ? window.getClaudeApiUrl() : '/api/claude';
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    apiKey: apiKey.trim(),
+                    model: 'claude-sonnet-4-5-20250929',
+                    max_tokens: 8000,
+                    temperature: 0.1,
+                    messages: [
+                        {
+                            role: 'user',
+                            content: prompt
+                        }
+                    ]
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`API 오류: ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (!data.content || !data.content[0] || !data.content[0].text) {
+                throw new Error('API 응답 형식 오류');
+            }
+
+            const aiResponse = data.content[0].text.trim();
+            console.log('AI 2차 매칭 응답:', aiResponse);
+
+            // JSON 추출
+            let jsonText = aiResponse;
+            const jsonMatch = aiResponse.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+            if (jsonMatch) {
+                jsonText = jsonMatch[1];
+            } else {
+                const firstBrace = jsonText.indexOf('{');
+                const lastBrace = jsonText.lastIndexOf('}');
+                if (firstBrace !== -1 && lastBrace !== -1) {
+                    jsonText = jsonText.substring(firstBrace, lastBrace + 1);
+                }
+            }
+
+            const matchResult = JSON.parse(jsonText);
+            const matches = matchResult.matches || [];
+
+            // 매칭 결과를 기존 데이터에 병합
+            const usedKoreanIndices = new Set();
+            const usedJapaneseIndices = new Set();
+            const updatedData = [...this.extractedData];
+
+            // AI가 매칭한 결과 처리
+            for (const match of matches) {
+                const koIdx = match.korean_index - 1;
+                const jaIdx = match.japanese_index - 1;
+
+                if (koIdx >= 0 && koIdx < unmatchedKorean.length &&
+                    jaIdx >= 0 && jaIdx < unmatchedJapanese.length) {
+                    const koItem = unmatchedKorean[koIdx];
+                    const jaItem = unmatchedJapanese[jaIdx];
+
+                    if (koItem && jaItem) {
+                        // 한국어만 있는 행에 일본어 추가
+                        const koRowIndex = koItem.index;
+                        if (updatedData[koRowIndex] && !updatedData[koRowIndex]['일본어']) {
+                            updatedData[koRowIndex]['일본어'] = jaItem.text;
+                        }
+                        // 일본어만 있는 행에 한국어 추가
+                        const jaRowIndex = jaItem.index;
+                        if (updatedData[jaRowIndex] && !updatedData[jaRowIndex]['한국어']) {
+                            updatedData[jaRowIndex]['한국어'] = koItem.text;
+                        }
+                        usedKoreanIndices.add(koIdx);
+                        usedJapaneseIndices.add(jaIdx);
+                    }
+                }
+            }
+
+            // 매칭되지 않은 항목은 그대로 유지
+            // (이미 updatedData에 반영되어 있음)
+
+            // 결과 저장 및 표시
+            this.extractedData = updatedData;
+            this.currentExtractedPage = 1;
+            this.selectedExtractedIndices.clear();
+            this.showResult(updatedData);
+
+            // 완료 메시지 표시
+            const matchedCount = matches.length;
+            const remainingEmpty = updatedData.filter(row => (!row['한국어'] || !row['일본어']) && (row['한국어'] || row['일본어'])).length;
+
+            infoDiv.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px; padding: 15px; background: #e8f5e9; border-radius: 8px; border: 1px solid #a5d6a7;">
+                    <div style="font-size: 20px;">✅</div>
+                    <div style="flex: 1;">
+                        <strong style="color: #1a1a1a;">2차 매칭 완료 (AI 기반)</strong><br>
+                        <small style="color: #666;">${matchedCount}개 항목 추가 매칭됨`;
+            
+            if (remainingEmpty > 0) {
+                infoDiv.innerHTML += ` | 빈칸 ${remainingEmpty}개 남음</small>`;
+            } else {
+                infoDiv.innerHTML += `</small>`;
+            }
+            
+            infoDiv.innerHTML += `</div></div>`;
+
+        } catch (error) {
+            console.error('2차 매칭 오류:', error);
+            let errorMessage = error.message || '알 수 없는 오류가 발생했습니다.';
+            
+            // 네트워크 오류인 경우
+            if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
+                errorMessage = 'API에 연결할 수 없습니다.\n\n가능한 원인:\n1. 네트워크 연결 문제\n2. Cloudflare Workers 서비스 문제\n3. 방화벽 또는 보안 설정\n\n인터넷 연결을 확인하고 다시 시도해주세요.';
+            }
+            
+            if (infoDiv) {
+                infoDiv.innerHTML = `
+                    <div style="padding: 15px; background: #ffebee; border-radius: 8px; border: 1px solid #f44336;">
+                        <strong style="color: #c62828;">❌ 2차 매칭 실패</strong><br>
+                        <small style="color: #666;">${errorMessage}</small>
+                    </div>
+                `;
+            }
+            alert(`2차 매칭 중 오류가 발생했습니다: ${errorMessage}`);
+        }
+    }
+    */
 
     // 기존 extractTexts 함수는 위치 기반 매칭으로 대체됨
     async extractTexts() {
@@ -2005,7 +2390,7 @@ ${japaneseTextBlock}
         return totalWords > 0 ? commonWords.length / totalWords : 0;
     }
 
-    // 위치 기준으로 텍스트 매칭 (레거시, 호환성 유지)
+    // 위치 기준으로 텍스트 매칭 (개선: 위치, 길이, 숫자/영문 일치도 종합 고려)
     matchByPosition(koreanTexts, japaneseTexts) {
         const pairs = [];
         
@@ -2026,8 +2411,8 @@ ${japaneseTextBlock}
             return pairs;
         }
         
-        // 위치 기준 매칭
-        // 각 한국어 텍스트에 대해 가장 가까운 일본어 텍스트 찾기
+        // 종합 점수 기반 매칭
+        // 각 한국어 텍스트에 대해 가장 적합한 일본어 텍스트 찾기
         const usedJapaneseIndices = new Set();
         
         for (const koBlock of koreanTexts) {
@@ -2037,10 +2422,10 @@ ${japaneseTextBlock}
             
             if (!koText || !koText.trim()) continue;
             
-            // 가장 가까운 일본어 텍스트 찾기
-            let closestJa = null;
-            let closestDistance = Infinity;
-            let closestIndex = -1;
+            // 가장 적합한 일본어 텍스트 찾기 (종합 점수 기반)
+            let bestJa = null;
+            let bestScore = -1;
+            let bestIndex = -1;
             
             for (let j = 0; j < japaneseTexts.length; j++) {
                 if (usedJapaneseIndices.has(j)) continue;
@@ -2052,29 +2437,82 @@ ${japaneseTextBlock}
                 const jaX = typeof jaBlock === 'object' && jaBlock.x !== undefined ? jaBlock.x : 0;
                 const jaY = typeof jaBlock === 'object' && jaBlock.y !== undefined ? jaBlock.y : 0;
                 
-                // 거리 계산 (유클리드 거리)
-                const distance = Math.sqrt(Math.pow(koX - jaX, 2) + Math.pow(koY - jaY, 2));
+                // 1. 위치 점수 계산 (0~1, 가까울수록 높음)
+                let positionScore = 0;
+                if (koX !== 0 || koY !== 0 || jaX !== 0 || jaY !== 0) {
+                    const distance = Math.sqrt(Math.pow(koX - jaX, 2) + Math.pow(koY - jaY, 2));
+                    const yDiff = Math.abs(koY - jaY);
+                    
+                    // Y 좌표 차이가 크면 매칭하지 않음 (같은 줄에 있는 것으로 간주)
+                    if (yDiff > 200000) continue; // 200000 EMU = 약 20cm 이상 차이나면 다른 줄로 간주
+                    
+                    // 거리가 가까울수록 높은 점수 (최대 거리 500000 EMU 기준)
+                    positionScore = Math.max(0, 1 - (distance / 500000));
+                } else {
+                    // 위치 정보가 없으면 인덱스 기반 점수
+                    const indexDiff = Math.abs(koreanTexts.indexOf(koBlock) - j);
+                    positionScore = Math.max(0, 1 - (indexDiff * 0.1));
+                }
                 
-                // Y 좌표 차이가 크면 매칭하지 않음 (같은 줄에 있는 것으로 간주)
-                const yDiff = Math.abs(koY - jaY);
-                // Y 차이 임계값을 더 크게 설정 (슬라이드 전체에서 매칭 가능하도록)
-                if (yDiff > 200000) continue; // 200000 EMU = 약 20cm 이상 차이나면 다른 줄로 간주
+                // 2. 텍스트 길이 점수 계산 (0~1, 비슷할수록 높음)
+                const koLength = koText.length;
+                const jaLength = jaText.length;
+                const lengthDiff = Math.abs(koLength - jaLength);
+                const maxLength = Math.max(koLength, jaLength, 1);
+                const lengthScore = Math.max(0, 1 - (lengthDiff / maxLength));
                 
-                if (distance < closestDistance) {
-                    closestDistance = distance;
-                    closestJa = jaText;
-                    closestIndex = j;
+                // 3. 숫자 일치도 점수 계산 (0~1)
+                let numberScore = 0;
+                if (this.numbersMatch(koText, jaText)) {
+                    numberScore = 1;
+                } else {
+                    const koNums = this.extractNumbers(koText);
+                    const jaNums = this.extractNumbers(jaText);
+                    if (koNums.length > 0 && jaNums.length > 0) {
+                        // 숫자가 일부 일치하는 경우
+                        const commonNums = koNums.filter(n => jaNums.includes(n));
+                        numberScore = commonNums.length / Math.max(koNums.length, jaNums.length);
+                    }
+                }
+                
+                // 4. 영문 일치도 점수 계산 (0~1)
+                let englishScore = 0;
+                const koEnglish = this.extractEnglish(koText);
+                const jaEnglish = this.extractEnglish(jaText);
+                if (koEnglish.length > 0 && jaEnglish.length > 0) {
+                    // 대소문자 무시하고 비교
+                    const koLower = koEnglish.map(e => e.toLowerCase());
+                    const jaLower = jaEnglish.map(e => e.toLowerCase());
+                    const commonEnglish = koLower.filter(e => jaLower.includes(e));
+                    englishScore = commonEnglish.length / Math.max(koEnglish.length, jaEnglish.length);
+                } else if (koEnglish.length === 0 && jaEnglish.length === 0) {
+                    // 둘 다 영문이 없으면 중립 점수
+                    englishScore = 0.5;
+                }
+                
+                // 종합 점수 계산 (가중 평균)
+                // 위치: 40%, 길이: 20%, 숫자: 25%, 영문: 15%
+                const totalScore = 
+                    positionScore * 0.4 +
+                    lengthScore * 0.2 +
+                    numberScore * 0.25 +
+                    englishScore * 0.15;
+                
+                if (totalScore > bestScore) {
+                    bestScore = totalScore;
+                    bestJa = jaText;
+                    bestIndex = j;
                 }
             }
             
-            // 매칭된 일본어가 있으면 사용 표시
-            if (closestIndex >= 0) {
-                usedJapaneseIndices.add(closestIndex);
+            // 매칭된 일본어가 있으면 사용 표시 (임계값 0.3 이상)
+            if (bestIndex >= 0 && bestScore >= 0.3) {
+                usedJapaneseIndices.add(bestIndex);
             }
             
             pairs.push({
                 korean: koText,
-                japanese: closestJa || ''
+                japanese: bestJa || ''
             });
         }
         
@@ -2090,6 +2528,14 @@ ${japaneseTextBlock}
         }
         
         return pairs;
+    }
+    
+    // 영문 추출 함수
+    extractEnglish(text) {
+        if (!text || typeof text !== 'string') return [];
+        // 영문 단어 추출 (연속된 영문자)
+        const matches = text.match(/[A-Za-z]+/g);
+        return matches || [];
     }
 
     // 단순 숫자만 있는 텍스트인지 확인
@@ -2275,37 +2721,69 @@ ${japaneseTextBlock}
                     // 빈 칸이 있으면 행 배경색 변경
                     const rowStyle = hasEmptyCell ? 'background-color: #fff3cd;' : '';
                     const korInputStyle = isEmptyKor 
-                        ? 'width: 100%; padding: 5px 8px; border: 2px solid #ff9800; border-radius: 4px; font-size: 13px; background-color: #fff3cd;' 
-                        : 'width: 100%; padding: 5px 8px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 13px;';
+                        ? 'width: 100%; padding: 5px 8px; border: 2px solid #ff9800; border-radius: 4px; font-size: 13px; background-color: #fff3cd; min-height: 36px; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; overflow: visible; resize: none; height: auto;' 
+                        : 'width: 100%; padding: 5px 8px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 13px; min-height: 36px; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; overflow: visible; resize: none; height: auto;';
                     const jpnInputStyle = isEmptyJpn 
-                        ? 'width: 100%; padding: 5px 8px; border: 2px solid #ff9800; border-radius: 4px; font-size: 13px; background-color: #fff3cd;' 
-                        : 'width: 100%; padding: 5px 8px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 13px;';
+                        ? 'width: 100%; padding: 5px 8px; border: 2px solid #ff9800; border-radius: 4px; font-size: 13px; background-color: #fff3cd; min-height: 36px; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; overflow: visible; resize: none; height: auto;' 
+                        : 'width: 100%; padding: 5px 8px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 13px; min-height: 36px; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; overflow: visible; resize: none; height: auto;';
                     
                     return `
-                        <tr data-row-index="${actualIndex}" style="${rowStyle}">
-                            <td>
+                        <tr data-row-index="${actualIndex}" 
+                            draggable="true" 
+                            class="draggable-row"
+                            style="${rowStyle} cursor: move; user-select: none;"
+                            ondragstart="if(window.pptExtractor) window.pptExtractor.handleRowDragStart(event, ${actualIndex})"
+                            ondragover="if(window.pptExtractor) window.pptExtractor.handleDragOver(event)"
+                            ondrop="if(window.pptExtractor) window.pptExtractor.handleRowDrop(event, ${actualIndex})"
+                            ondragend="if(window.pptExtractor) window.pptExtractor.handleDragEnd(event)"
+                            ondragenter="if(window.pptExtractor) window.pptExtractor.handleRowDragEnter(event, ${actualIndex})"
+                            ondragleave="if(window.pptExtractor) window.pptExtractor.handleDragLeave(event)">
+                            <td style="pointer-events: auto;">
                                 <input type="checkbox" 
                                        class="extracted-row-checkbox" 
                                        data-index="${actualIndex}" 
                                        ${isChecked ? 'checked' : ''} 
+                                       onclick="event.stopPropagation();"
                                        onchange="if(window.pptExtractor) window.pptExtractor.toggleSelectExtracted(${actualIndex}, this.checked)">
                             </td>
-                            <td>${actualIndex + 1}</td>
-                            <td>
-                                <input type="text" 
-                                       class="extracted-kor-input" 
+                            <td style="cursor: move;">${actualIndex + 1}</td>
+                            <td class="cell-drop-zone" 
+                                data-row-index="${actualIndex}" 
+                                data-cell-type="korean"
+                                ondragover="if(window.pptExtractor) { event.preventDefault(); window.pptExtractor.handleDragOver(event); }"
+                                ondrop="if(window.pptExtractor) window.pptExtractor.handleCellDrop(event, ${actualIndex}, 'korean')"
+                                ondragenter="if(window.pptExtractor) window.pptExtractor.handleCellDragEnter(event, ${actualIndex}, 'korean')"
+                                ondragleave="if(window.pptExtractor) window.pptExtractor.handleCellDragLeave(event)"
+                                style="padding: 12px; cursor: move; min-height: 50px;">
+                                <textarea 
+                                       class="extracted-kor-input draggable-cell" 
                                        data-index="${actualIndex}"
-                                       value="${korValue}" 
-                                       style="${korInputStyle}"
-                                       oninput="if(window.pptExtractor) window.pptExtractor.updateExtractedCell(${actualIndex}, '한국어', this.value)">
+                                       data-cell-type="korean"
+                                       style="${korInputStyle} cursor: move; width: 100%; min-height: 36px; box-sizing: border-box; font-family: inherit; line-height: 1.4;"
+                                       oninput="if(window.pptExtractor) { window.pptExtractor.updateExtractedCell(${actualIndex}, '한국어', this.value); this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; }"
+                                       onload="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';"
+                                       draggable="true"
+                                       ondragstart="if(window.pptExtractor) window.pptExtractor.handleCellDragStart(event, ${actualIndex}, 'korean')"
+                                       ondragend="if(window.pptExtractor) window.pptExtractor.handleDragEnd(event)">${korValue}</textarea>
                             </td>
-                            <td>
-                                <input type="text" 
-                                       class="extracted-jpn-input" 
+                            <td class="cell-drop-zone" 
+                                data-row-index="${actualIndex}" 
+                                data-cell-type="japanese"
+                                ondragover="if(window.pptExtractor) { event.preventDefault(); window.pptExtractor.handleDragOver(event); }"
+                                ondrop="if(window.pptExtractor) window.pptExtractor.handleCellDrop(event, ${actualIndex}, 'japanese')"
+                                ondragenter="if(window.pptExtractor) window.pptExtractor.handleCellDragEnter(event, ${actualIndex}, 'japanese')"
+                                ondragleave="if(window.pptExtractor) window.pptExtractor.handleCellDragLeave(event)"
+                                style="padding: 12px; cursor: move; min-height: 50px;">
+                                <textarea 
+                                       class="extracted-jpn-input draggable-cell" 
                                        data-index="${actualIndex}"
-                                       value="${jpnValue}" 
-                                       style="${jpnInputStyle}"
-                                       oninput="if(window.pptExtractor) window.pptExtractor.updateExtractedCell(${actualIndex}, '일본어', this.value)">
+                                       data-cell-type="japanese"
+                                       style="${jpnInputStyle} cursor: move; width: 100%; min-height: 36px; box-sizing: border-box; font-family: inherit; line-height: 1.4;"
+                                       oninput="if(window.pptExtractor) { window.pptExtractor.updateExtractedCell(${actualIndex}, '일본어', this.value); this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; }"
+                                       onload="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';"
+                                       draggable="true"
+                                       ondragstart="if(window.pptExtractor) window.pptExtractor.handleCellDragStart(event, ${actualIndex}, 'japanese')"
+                                       ondragend="if(window.pptExtractor) window.pptExtractor.handleDragEnd(event)">${jpnValue}</textarea>
                             </td>
                             <td>
                                 <button class="btn btn-danger btn-small" onclick="if(window.pptExtractor) window.pptExtractor.deleteRow(${actualIndex})" style="padding: 6px 12px; font-size: 12px;">삭제</button>
@@ -2323,6 +2801,15 @@ ${japaneseTextBlock}
             
             // 페이지네이션 정보 업데이트
             this.updateExtractedPagination(data.length);
+            
+            // textarea 높이 자동 조절 (스크롤 없이 전체 내용 표시)
+            setTimeout(() => {
+                const textareas = document.querySelectorAll('.extracted-kor-input, .extracted-jpn-input');
+                textareas.forEach(textarea => {
+                    textarea.style.height = 'auto';
+                    textarea.style.height = textarea.scrollHeight + 'px';
+                });
+            }, 100);
         }
     }
 
@@ -2549,11 +3036,27 @@ ${japaneseTextBlock}
 
     // 삭제 버튼 표시/숨김 업데이트
     updateDeleteSelectedButton() {
-        const deleteBtn = document.getElementById('deleteSelectedExtractedBtn');
         const hasSelection = this.selectedExtractedIndices.size > 0;
+        const deleteBtn = document.getElementById('deleteSelectedExtractedBtn');
+        const korUpBtn = document.getElementById('extractedKorUpBtn');
+        const korDownBtn = document.getElementById('extractedKorDownBtn');
+        const jpnUpBtn = document.getElementById('extractedJpnUpBtn');
+        const jpnDownBtn = document.getElementById('extractedJpnDownBtn');
         
         if (deleteBtn) {
             deleteBtn.style.display = hasSelection ? 'block' : 'none';
+        }
+        if (korUpBtn) {
+            korUpBtn.style.display = hasSelection ? 'block' : 'none';
+        }
+        if (korDownBtn) {
+            korDownBtn.style.display = hasSelection ? 'block' : 'none';
+        }
+        if (jpnUpBtn) {
+            jpnUpBtn.style.display = hasSelection ? 'block' : 'none';
+        }
+        if (jpnDownBtn) {
+            jpnDownBtn.style.display = hasSelection ? 'block' : 'none';
         }
     }
 
@@ -2587,6 +3090,102 @@ ${japaneseTextBlock}
         }
         
         // 테이블 다시 렌더링
+        this.showResult(this.extractedData);
+    }
+
+    // 선택된 항목의 KOR 값 올리기 (한 칸 위로)
+    moveSelectedKorUp() {
+        console.log('[moveSelectedKorUp] 함수 호출됨');
+        if (this.selectedExtractedIndices.size === 0 || !this.extractedData) {
+            console.log('[moveSelectedKorUp] 선택된 항목이 없거나 데이터가 없음');
+            return;
+        }
+        
+        const sortedIndices = Array.from(this.selectedExtractedIndices).sort((a, b) => a - b);
+        console.log('[moveSelectedKorUp] 선택된 인덱스:', sortedIndices);
+        
+        sortedIndices.forEach(index => {
+            if (index > 0 && this.extractedData[index] && this.extractedData[index - 1]) {
+                // 위 행의 KOR 값과 현재 행의 KOR 값 교환
+                const temp = this.extractedData[index].korean;
+                this.extractedData[index].korean = this.extractedData[index - 1].korean;
+                this.extractedData[index - 1].korean = temp;
+                console.log(`[moveSelectedKorUp] 인덱스 ${index}와 ${index - 1}의 KOR 값 교환`);
+            }
+        });
+        
+        this.showResult(this.extractedData);
+    }
+
+    // 선택된 항목의 KOR 값 내리기 (한 칸 아래로)
+    moveSelectedKorDown() {
+        console.log('[moveSelectedKorDown] 함수 호출됨');
+        if (this.selectedExtractedIndices.size === 0 || !this.extractedData) {
+            console.log('[moveSelectedKorDown] 선택된 항목이 없거나 데이터가 없음');
+            return;
+        }
+        
+        const sortedIndices = Array.from(this.selectedExtractedIndices).sort((a, b) => b - a);
+        console.log('[moveSelectedKorDown] 선택된 인덱스:', sortedIndices);
+        
+        sortedIndices.forEach(index => {
+            if (index < this.extractedData.length - 1 && this.extractedData[index] && this.extractedData[index + 1]) {
+                // 아래 행의 KOR 값과 현재 행의 KOR 값 교환
+                const temp = this.extractedData[index].korean;
+                this.extractedData[index].korean = this.extractedData[index + 1].korean;
+                this.extractedData[index + 1].korean = temp;
+                console.log(`[moveSelectedKorDown] 인덱스 ${index}와 ${index + 1}의 KOR 값 교환`);
+            }
+        });
+        
+        this.showResult(this.extractedData);
+    }
+
+    // 선택된 항목의 JPN 값 올리기 (한 칸 위로)
+    moveSelectedJpnUp() {
+        console.log('[moveSelectedJpnUp] 함수 호출됨');
+        if (this.selectedExtractedIndices.size === 0 || !this.extractedData) {
+            console.log('[moveSelectedJpnUp] 선택된 항목이 없거나 데이터가 없음');
+            return;
+        }
+        
+        const sortedIndices = Array.from(this.selectedExtractedIndices).sort((a, b) => a - b);
+        console.log('[moveSelectedJpnUp] 선택된 인덱스:', sortedIndices);
+        
+        sortedIndices.forEach(index => {
+            if (index > 0 && this.extractedData[index] && this.extractedData[index - 1]) {
+                // 위 행의 JPN 값과 현재 행의 JPN 값 교환
+                const temp = this.extractedData[index].japanese;
+                this.extractedData[index].japanese = this.extractedData[index - 1].japanese;
+                this.extractedData[index - 1].japanese = temp;
+                console.log(`[moveSelectedJpnUp] 인덱스 ${index}와 ${index - 1}의 JPN 값 교환`);
+            }
+        });
+        
+        this.showResult(this.extractedData);
+    }
+
+    // 선택된 항목의 JPN 값 내리기 (한 칸 아래로)
+    moveSelectedJpnDown() {
+        console.log('[moveSelectedJpnDown] 함수 호출됨');
+        if (this.selectedExtractedIndices.size === 0 || !this.extractedData) {
+            console.log('[moveSelectedJpnDown] 선택된 항목이 없거나 데이터가 없음');
+            return;
+        }
+        
+        const sortedIndices = Array.from(this.selectedExtractedIndices).sort((a, b) => b - a);
+        console.log('[moveSelectedJpnDown] 선택된 인덱스:', sortedIndices);
+        
+        sortedIndices.forEach(index => {
+            if (index < this.extractedData.length - 1 && this.extractedData[index] && this.extractedData[index + 1]) {
+                // 아래 행의 JPN 값과 현재 행의 JPN 값 교환
+                const temp = this.extractedData[index].japanese;
+                this.extractedData[index].japanese = this.extractedData[index + 1].japanese;
+                this.extractedData[index + 1].japanese = temp;
+                console.log(`[moveSelectedJpnDown] 인덱스 ${index}와 ${index + 1}의 JPN 값 교환`);
+            }
+        });
+        
         this.showResult(this.extractedData);
     }
 
@@ -2874,6 +3473,21 @@ ${japaneseTextBlock}
         // localStorage에 저장
         localStorage.setItem('corpusData', JSON.stringify(corpusData));
         localStorage.setItem('corpusFileGroups', JSON.stringify(fileGroups));
+        
+        // Firestore에도 저장
+        if (window.FirestoreHelper) {
+            FirestoreHelper.save('corpus', 'data', {
+                items: corpusData
+            }).catch(error => {
+                console.error('Firestore에 코퍼스 데이터 저장 실패:', error);
+            });
+            
+            FirestoreHelper.save('corpus', 'fileGroups', {
+                fileGroups: fileGroups
+            }).catch(error => {
+                console.error('Firestore에 파일 그룹 저장 실패:', error);
+            });
+        }
 
         alert(`${addedCount}개의 항목이 코퍼스에 추가되었습니다.`);
         
@@ -2903,24 +3517,64 @@ ${japaneseTextBlock}
         this.extractedData = null;
         this.updateExtractButton();
         
-        // 코퍼스 매니저가 있으면 데이터 새로고침
-        if (typeof corpusManager !== 'undefined') {
+        // 코퍼스 매니저 초기화 및 데이터 새로고침
+        const refreshCorpusManager = () => {
+            // corpusManager가 없으면 초기화 시도
+            if (typeof corpusManager === 'undefined' || !corpusManager) {
+                // corpus.js가 로드되었는지 확인
+                if (typeof CorpusManager !== 'undefined') {
+                    corpusManager = new CorpusManager();
+                    console.log('CorpusManager 초기화 완료');
+                } else {
+                    console.warn('CorpusManager 클래스가 아직 로드되지 않았습니다. 페이지를 새로고침합니다.');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                    return;
+                }
+            }
+            
+            console.log('코퍼스 매니저 데이터 새로고침 시작');
             corpusManager.loadData().then(() => {
+                console.log('코퍼스 데이터 로드 완료');
                 return corpusManager.loadFileGroups();
             }).then(() => {
+                console.log('파일 그룹 로드 완료');
                 corpusManager.renderFileList();
                 corpusManager.filterTerms();
                 corpusManager.render();
+                
+                console.log('코퍼스 목록 렌더링 완료');
                 
                 // 파일 목록 섹션으로 스크롤
                 const fileListSection = document.getElementById('fileListSection');
                 if (fileListSection) {
                     fileListSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
+            }).catch(error => {
+                console.error('코퍼스 매니저 새로고침 오류:', error);
+                // 오류 발생 시 페이지 새로고침
+                window.location.reload();
             });
+        };
+        
+        // corpusManager가 이미 있으면 즉시 실행, 없으면 약간 대기 후 실행
+        if (typeof corpusManager !== 'undefined' && corpusManager) {
+            refreshCorpusManager();
         } else {
-            // 없으면 페이지 새로고침
-            window.location.reload();
+            // corpus.js가 로드될 때까지 대기
+            let attempts = 0;
+            const checkInterval = setInterval(() => {
+                attempts++;
+                if (typeof CorpusManager !== 'undefined' || (typeof corpusManager !== 'undefined' && corpusManager)) {
+                    clearInterval(checkInterval);
+                    refreshCorpusManager();
+                } else if (attempts > 50) {
+                    clearInterval(checkInterval);
+                    console.warn('CorpusManager를 찾을 수 없습니다. 페이지를 새로고침합니다.');
+                    window.location.reload();
+                }
+            }, 100);
         }
     }
     
@@ -2962,11 +3616,587 @@ ${japaneseTextBlock}
         
         console.log('추출기가 초기화되었습니다.');
     }
+    
+    // 행 드래그 시작
+    handleRowDragStart(event, rowIndex) {
+        // 셀 드래그가 아닌 경우에만 행 드래그 처리
+        if (event.target.classList.contains('draggable-cell')) {
+            return; // 셀 드래그는 handleCellDragStart에서 처리
+        }
+        
+        this.isDragging = true;
+        this.draggedRowIndex = rowIndex;
+        this.draggedCellType = null; // 행 전체 드래그
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/html', event.target.outerHTML);
+        event.target.style.opacity = '0.5';
+        
+        // 드래그 중인 행 표시
+        const row = event.target.closest('tr');
+        if (row) {
+            row.classList.add('dragging');
+        }
+        
+        console.log('행 드래그 시작:', rowIndex);
+    }
+    
+    // 셀 드래그 시작
+    handleCellDragStart(event, rowIndex, cellType) {
+        event.stopPropagation(); // 행 드래그 이벤트 전파 방지
+        
+        this.isDragging = true;
+        this.draggedRowIndex = rowIndex;
+        this.draggedCellType = cellType; // 'korean' 또는 'japanese'
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', cellType);
+        event.target.style.opacity = '0.5';
+        event.target.style.backgroundColor = '#e3f2fd';
+        
+        console.log('셀 드래그 시작:', { rowIndex, cellType });
+    }
+    
+    // 드래그 오버
+    handleDragOver(event) {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+    }
+    
+    // 행 드래그 엔터
+    handleRowDragEnter(event, targetIndex) {
+        // 셀 드래그가 아닌 경우에만 행 드래그 처리
+        if (this.draggedCellType) {
+            return; // 셀 드래그는 handleCellDragEnter에서 처리
+        }
+        
+        if (targetIndex !== this.draggedRowIndex) {
+            this.dragOverRowIndex = targetIndex;
+            const row = event.target.closest('tr');
+            if (row) {
+                row.classList.add('drag-over');
+            }
+        }
+    }
+    
+    // 셀 드래그 엔터
+    handleCellDragEnter(event, targetIndex, targetCellType) {
+        event.stopPropagation();
+        event.preventDefault();
+        
+        // 같은 타입의 셀에만 드롭 가능
+        if (this.draggedCellType === targetCellType && targetIndex !== this.draggedRowIndex) {
+            const cell = event.target.closest('td.cell-drop-zone');
+            if (cell) {
+                cell.classList.add('cell-drag-over');
+            }
+        }
+    }
+    
+    // 셀 드래그 리브
+    handleCellDragLeave(event) {
+        const cell = event.target.closest('td.cell-drop-zone');
+        if (cell) {
+            cell.classList.remove('cell-drag-over');
+        }
+    }
+    
+    // 드래그 리브
+    handleDragLeave(event) {
+        const row = event.target.closest('tr');
+        if (row) {
+            row.classList.remove('drag-over');
+        }
+    }
+    
+    // 행 드롭 처리
+    handleRowDrop(event, targetIndex) {
+        // 셀 드롭이 아닌 경우에만 행 드롭 처리
+        if (event.target.classList.contains('draggable-cell') || 
+            event.target.closest('.cell-drop-zone')) {
+            return; // 셀 드롭은 handleCellDrop에서 처리
+        }
+        
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const draggedIndex = this.draggedRowIndex;
+        const dropTargetIndex = targetIndex;
+        
+        if (draggedIndex === null || draggedIndex === dropTargetIndex) {
+            this.resetDragState();
+            return;
+        }
+        
+        console.log('행 드롭:', { draggedIndex, dropTargetIndex, shiftKey: event.shiftKey });
+        
+        // Shift 키를 누른 경우 병합, 그 외에는 순서 변경
+        if (event.shiftKey) {
+            this.mergeRows(draggedIndex, dropTargetIndex);
+        } else {
+            this.swapRows(draggedIndex, dropTargetIndex);
+        }
+        
+        this.resetDragState();
+    }
+    
+    // 셀 드롭 처리
+    handleCellDrop(event, targetIndex, targetCellType) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const draggedIndex = this.draggedRowIndex;
+        const draggedCellType = this.draggedCellType;
+        
+        if (draggedIndex === null || draggedCellType !== targetCellType || draggedIndex === targetIndex) {
+            this.resetDragState();
+            return;
+        }
+        
+        console.log('셀 드롭 (이동):', { draggedIndex, targetIndex, draggedCellType, targetCellType });
+        
+        // 드래그한 셀의 내용을 드롭한 셀로 이동
+        this.moveCell(draggedIndex, targetIndex, draggedCellType);
+        
+        this.resetDragState();
+    }
+    
+    // 드롭 옵션 표시
+    showDropOptions(draggedIndex, targetIndex) {
+        const draggedRow = this.extractedData[draggedIndex];
+        const targetRow = this.extractedData[targetIndex];
+        
+        const draggedKor = draggedRow.korean || draggedRow.한국어 || '';
+        const draggedJpn = draggedRow.japanese || draggedRow.일본어 || '';
+        const targetKor = targetRow.korean || targetRow.한국어 || '';
+        const targetJpn = targetRow.japanese || targetRow.일본어 || '';
+        
+        // 옵션 모달 생성
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        `;
+        
+        modal.innerHTML = `
+            <div style="background: white; padding: 30px; border-radius: 12px; max-width: 600px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                <h3 style="margin-top: 0; margin-bottom: 20px; color: #333;">행 조정 옵션</h3>
+                
+                <div style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                    <div style="margin-bottom: 10px;">
+                        <strong>드래그한 행 (${draggedIndex + 1}번):</strong>
+                        <div style="margin-top: 5px; padding: 8px; background: white; border-radius: 4px;">
+                            <div><strong>KOR:</strong> ${this.escapeHtml(draggedKor)}</div>
+                            <div><strong>JPN:</strong> ${this.escapeHtml(draggedJpn)}</div>
+                        </div>
+                    </div>
+                    <div>
+                        <strong>대상 행 (${targetIndex + 1}번):</strong>
+                        <div style="margin-top: 5px; padding: 8px; background: white; border-radius: 4px;">
+                            <div><strong>KOR:</strong> ${this.escapeHtml(targetKor)}</div>
+                            <div><strong>JPN:</strong> ${this.escapeHtml(targetJpn)}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button id="mergeOption" style="padding: 12px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;">
+                        🔗 병합: 두 행을 하나로 합치기
+                    </button>
+                    <button id="swapOption" style="padding: 12px; background: #2196F3; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;">
+                        🔄 순서 변경: 두 행의 위치 교체
+                    </button>
+                    <button id="swapMatchOption" style="padding: 12px; background: #FF9800; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;">
+                        🔀 매칭 변경: 한국어-일본어 매칭 교체
+                    </button>
+                    <button id="cancelOption" style="padding: 12px; background: #999; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                        취소
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // 옵션 버튼 이벤트
+        modal.querySelector('#mergeOption').addEventListener('click', () => {
+            this.mergeRows(draggedIndex, targetIndex);
+            document.body.removeChild(modal);
+        });
+        
+        modal.querySelector('#swapOption').addEventListener('click', () => {
+            this.swapRows(draggedIndex, targetIndex);
+            document.body.removeChild(modal);
+        });
+        
+        modal.querySelector('#swapMatchOption').addEventListener('click', () => {
+            this.swapMatch(draggedIndex, targetIndex);
+            document.body.removeChild(modal);
+        });
+        
+        modal.querySelector('#cancelOption').addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+        
+        // 모달 외부 클릭 시 닫기
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                document.body.removeChild(modal);
+            }
+        });
+    }
+    
+    // 행 병합
+    mergeRows(index1, index2) {
+        if (!this.extractedData || index1 < 0 || index2 < 0 || 
+            index1 >= this.extractedData.length || index2 >= this.extractedData.length) {
+            return;
+        }
+        
+        const row1 = this.extractedData[index1];
+        const row2 = this.extractedData[index2];
+        
+        // 두 행의 데이터 병합
+        const mergedKor = (row1.korean || row1.한국어 || '') + ' ' + (row2.korean || row2.한국어 || '');
+        const mergedJpn = (row1.japanese || row1.일본어 || '') + ' ' + (row2.japanese || row2.일본어 || '');
+        
+        // 첫 번째 행에 병합된 데이터 저장
+        if (row1.korean !== undefined) {
+            row1.korean = mergedKor.trim();
+            row1.japanese = mergedJpn.trim();
+        } else {
+            row1.한국어 = mergedKor.trim();
+            row1.일본어 = mergedJpn.trim();
+        }
+        
+        // 두 번째 행 삭제
+        this.extractedData.splice(index2, 1);
+        
+        // 결과 다시 표시
+        this.showResult(this.extractedData);
+        
+        console.log('행 병합 완료:', { index1, index2 });
+    }
+    
+    // 행 순서 변경
+    swapRows(index1, index2) {
+        if (!this.extractedData || index1 < 0 || index2 < 0 || 
+            index1 >= this.extractedData.length || index2 >= this.extractedData.length) {
+            return;
+        }
+        
+        // 두 행의 위치 교체
+        [this.extractedData[index1], this.extractedData[index2]] = 
+        [this.extractedData[index2], this.extractedData[index1]];
+        
+        // 결과 다시 표시
+        this.showResult(this.extractedData);
+        
+        console.log('행 순서 변경 완료:', { index1, index2 });
+    }
+    
+    // 매칭 변경 (한국어-일본어 교체)
+    swapMatch(index1, index2) {
+        if (!this.extractedData || index1 < 0 || index2 < 0 || 
+            index1 >= this.extractedData.length || index2 >= this.extractedData.length) {
+            return;
+        }
+        
+        const row1 = this.extractedData[index1];
+        const row2 = this.extractedData[index2];
+        
+        // 한국어와 일본어 교체
+        if (row1.korean !== undefined) {
+            const tempKor = row1.korean;
+            const tempJpn = row1.japanese;
+            row1.korean = row2.korean || row2.한국어 || '';
+            row1.japanese = row2.japanese || row2.일본어 || '';
+            row2.korean = tempKor;
+            row2.japanese = tempJpn;
+        } else {
+            const tempKor = row1.한국어;
+            const tempJpn = row1.일본어;
+            row1.한국어 = row2.korean || row2.한국어 || '';
+            row1.일본어 = row2.japanese || row2.일본어 || '';
+            row2.한국어 = tempKor;
+            row2.일본어 = tempJpn;
+        }
+        
+        // 결과 다시 표시
+        this.showResult(this.extractedData);
+        
+        console.log('매칭 변경 완료:', { index1, index2 });
+    }
+    
+    // 셀 드롭 옵션 표시
+    showCellDropOptions(draggedIndex, targetIndex, cellType) {
+        const draggedRow = this.extractedData[draggedIndex];
+        const targetRow = this.extractedData[targetIndex];
+        
+        const cellTypeName = cellType === 'korean' ? 'KOR' : 'JPN';
+        const draggedValue = cellType === 'korean' 
+            ? (draggedRow.korean || draggedRow.한국어 || '')
+            : (draggedRow.japanese || draggedRow.일본어 || '');
+        const targetValue = cellType === 'korean'
+            ? (targetRow.korean || targetRow.한국어 || '')
+            : (targetRow.japanese || targetRow.일본어 || '');
+        
+        // 옵션 모달 생성
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        `;
+        
+        modal.innerHTML = `
+            <div style="background: white; padding: 30px; border-radius: 12px; max-width: 600px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                <h3 style="margin-top: 0; margin-bottom: 20px; color: #333;">${cellTypeName} 셀 조정 옵션</h3>
+                
+                <div style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                    <div style="margin-bottom: 10px;">
+                        <strong>드래그한 ${cellTypeName} (${draggedIndex + 1}번 행):</strong>
+                        <div style="margin-top: 5px; padding: 8px; background: white; border-radius: 4px;">
+                            ${this.escapeHtml(draggedValue)}
+                        </div>
+                    </div>
+                    <div>
+                        <strong>대상 ${cellTypeName} (${targetIndex + 1}번 행):</strong>
+                        <div style="margin-top: 5px; padding: 8px; background: white; border-radius: 4px;">
+                            ${this.escapeHtml(targetValue)}
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button id="swapCellOption" style="padding: 12px; background: #2196F3; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;">
+                        🔄 교체: 두 ${cellTypeName} 셀의 내용 교체
+                    </button>
+                    <button id="mergeCellOption" style="padding: 12px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;">
+                        🔗 병합: 두 ${cellTypeName} 셀의 내용 합치기
+                    </button>
+                    <button id="cancelCellOption" style="padding: 12px; background: #999; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                        취소
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // 옵션 버튼 이벤트
+        modal.querySelector('#swapCellOption').addEventListener('click', () => {
+            this.swapCells(draggedIndex, targetIndex, cellType);
+            document.body.removeChild(modal);
+        });
+        
+        modal.querySelector('#mergeCellOption').addEventListener('click', () => {
+            this.mergeCells(draggedIndex, targetIndex, cellType);
+            document.body.removeChild(modal);
+        });
+        
+        modal.querySelector('#cancelCellOption').addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+        
+        // 모달 외부 클릭 시 닫기
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                document.body.removeChild(modal);
+            }
+        });
+    }
+    
+    // 셀 이동 (드래그한 셀의 내용을 드롭한 셀로 이동, 기존 텍스트는 유지)
+    moveCell(fromIndex, toIndex, cellType) {
+        if (!this.extractedData || fromIndex < 0 || toIndex < 0 || 
+            fromIndex >= this.extractedData.length || toIndex >= this.extractedData.length) {
+            return;
+        }
+        
+        const fromRow = this.extractedData[fromIndex];
+        const toRow = this.extractedData[toIndex];
+        
+        if (cellType === 'korean') {
+            // 한국어 셀 이동
+            const fromValue = fromRow.korean || fromRow.한국어 || '';
+            const toValue = toRow.korean || toRow.한국어 || '';
+            
+            // 드롭한 셀의 기존 텍스트 + 드래그한 셀의 텍스트
+            const mergedValue = (toValue + ' ' + fromValue).trim();
+            
+            if (toRow.korean !== undefined) {
+                toRow.korean = mergedValue;
+            } else {
+                toRow.한국어 = mergedValue;
+            }
+            // 원래 셀 비우기
+            if (fromRow.korean !== undefined) {
+                fromRow.korean = '';
+            } else {
+                fromRow.한국어 = '';
+            }
+        } else {
+            // 일본어 셀 이동
+            const fromValue = fromRow.japanese || fromRow.일본어 || '';
+            const toValue = toRow.japanese || toRow.일본어 || '';
+            
+            // 드롭한 셀의 기존 텍스트 + 드래그한 셀의 텍스트
+            const mergedValue = (toValue + ' ' + fromValue).trim();
+            
+            if (toRow.japanese !== undefined) {
+                toRow.japanese = mergedValue;
+            } else {
+                toRow.일본어 = mergedValue;
+            }
+            // 원래 셀 비우기
+            if (fromRow.japanese !== undefined) {
+                fromRow.japanese = '';
+            } else {
+                fromRow.일본어 = '';
+            }
+        }
+        
+        // 결과 다시 표시
+        this.showResult(this.extractedData);
+        
+        console.log('셀 이동 완료:', { fromIndex, toIndex, cellType });
+    }
+    
+    // 셀 교체
+    swapCells(index1, index2, cellType) {
+        if (!this.extractedData || index1 < 0 || index2 < 0 || 
+            index1 >= this.extractedData.length || index2 >= this.extractedData.length) {
+            return;
+        }
+        
+        const row1 = this.extractedData[index1];
+        const row2 = this.extractedData[index2];
+        
+        if (cellType === 'korean') {
+            if (row1.korean !== undefined) {
+                const temp = row1.korean;
+                row1.korean = row2.korean || row2.한국어 || '';
+                row2.korean = temp;
+            } else {
+                const temp = row1.한국어;
+                row1.한국어 = row2.korean || row2.한국어 || '';
+                row2.한국어 = temp;
+            }
+        } else {
+            if (row1.japanese !== undefined) {
+                const temp = row1.japanese;
+                row1.japanese = row2.japanese || row2.일본어 || '';
+                row2.japanese = temp;
+            } else {
+                const temp = row1.일본어;
+                row1.일본어 = row2.japanese || row2.일본어 || '';
+                row2.일본어 = temp;
+            }
+        }
+        
+        // 결과 다시 표시
+        this.showResult(this.extractedData);
+        
+        console.log('셀 교체 완료:', { index1, index2, cellType });
+    }
+    
+    // 셀 병합
+    mergeCells(index1, index2, cellType) {
+        if (!this.extractedData || index1 < 0 || index2 < 0 || 
+            index1 >= this.extractedData.length || index2 >= this.extractedData.length) {
+            return;
+        }
+        
+        const row1 = this.extractedData[index1];
+        const row2 = this.extractedData[index2];
+        
+        if (cellType === 'korean') {
+            const merged = (row1.korean || row1.한국어 || '') + ' ' + (row2.korean || row2.한국어 || '');
+            if (row1.korean !== undefined) {
+                row1.korean = merged.trim();
+            } else {
+                row1.한국어 = merged.trim();
+            }
+        } else {
+            const merged = (row1.japanese || row1.일본어 || '') + ' ' + (row2.japanese || row2.일본어 || '');
+            if (row1.japanese !== undefined) {
+                row1.japanese = merged.trim();
+            } else {
+                row1.일본어 = merged.trim();
+            }
+        }
+        
+        // 결과 다시 표시
+        this.showResult(this.extractedData);
+        
+        console.log('셀 병합 완료:', { index1, index2, cellType });
+    }
+    
+    // 드래그 상태 초기화
+    resetDragState() {
+        this.isDragging = false;
+        this.draggedRowIndex = null;
+        this.dragOverRowIndex = null;
+        this.draggedCellType = null;
+        
+        // 모든 드래그 관련 클래스 제거
+        const rows = document.querySelectorAll('.draggable-row');
+        rows.forEach(row => {
+            row.classList.remove('dragging', 'drag-over');
+            row.style.opacity = '1';
+        });
+        
+        const cells = document.querySelectorAll('.cell-drop-zone');
+        cells.forEach(cell => {
+            cell.classList.remove('cell-drag-over');
+        });
+        
+        const inputs = document.querySelectorAll('.draggable-cell');
+        inputs.forEach(input => {
+            input.style.opacity = '1';
+            input.style.backgroundColor = '';
+        });
+    }
+    
+    // 드래그 종료
+    handleDragEnd(event) {
+        this.resetDragState();
+    }
 }
 
 // 페이지 로드 시 초기화
 let pptExtractor;
-document.addEventListener('DOMContentLoaded', () => {
-    pptExtractor = new PPTExtractor();
-    window.pptExtractor = pptExtractor; // 전역 접근을 위해 window에 할당
-});
+
+// DOMContentLoaded가 이미 발생했는지 확인
+function initializePPTExtractor() {
+    if (!window.pptExtractor) {
+        console.log('PPTExtractor 인스턴스 생성 시작');
+        pptExtractor = new PPTExtractor();
+        window.pptExtractor = pptExtractor; // 전역 접근을 위해 window에 할당
+        console.log('PPTExtractor 인스턴스 생성 완료:', window.pptExtractor);
+    } else {
+        console.log('PPTExtractor가 이미 초기화되어 있습니다.');
+    }
+}
+
+// DOM이 이미 로드되었는지 확인
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializePPTExtractor);
+} else {
+    // DOM이 이미 로드되었으면 즉시 초기화
+    initializePPTExtractor();
+}

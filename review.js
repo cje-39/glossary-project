@@ -50,6 +50,43 @@ class ReviewExtractor {
         const clearApiKeyBtn = document.getElementById('clearApiKeyBtn');
         const apiKeyInput = document.getElementById('claudeApiKeyInput');
         
+        // API 키 저장 함수
+        const saveApiKey = async (apiKey) => {
+            // LocalStorage에 즉시 저장
+            localStorage.setItem('claude_api_key', apiKey);
+            
+            // Firestore에도 저장
+            try {
+                if (window.FirestoreHelper) {
+                    await FirestoreHelper.save('settings', 'claude_api_key', {
+                        apiKey: apiKey
+                    });
+                }
+            } catch (error) {
+                console.error('Firestore에 API 키 저장 실패:', error);
+            }
+        };
+        
+        // API 키 로드 함수
+        const loadApiKey = async () => {
+            try {
+                // Firestore에서 먼저 시도
+                if (window.FirestoreHelper) {
+                    const data = await FirestoreHelper.load('settings', 'claude_api_key');
+                    if (data && data.apiKey) {
+                        const apiKey = data.apiKey;
+                        localStorage.setItem('claude_api_key', apiKey);
+                        return apiKey;
+                    }
+                }
+            } catch (error) {
+                console.log('Firestore에서 API 키 로드 실패, LocalStorage 사용:', error);
+            }
+            
+            // LocalStorage에서 로드
+            return localStorage.getItem('claude_api_key');
+        };
+        
         // API 키 상태 표시 업데이트 함수
         const updateApiKeyStatus = () => {
             const apiKey = localStorage.getItem('claude_api_key');
@@ -77,10 +114,10 @@ class ReviewExtractor {
         };
         
         if (saveApiKeyBtn && apiKeyInput) {
-            saveApiKeyBtn.addEventListener('click', () => {
+            saveApiKeyBtn.addEventListener('click', async () => {
                 const apiKey = apiKeyInput.value.trim();
                 if (apiKey) {
-                    localStorage.setItem('claude_api_key', apiKey);
+                    await saveApiKey(apiKey);
                     updateApiKeyStatus();
                     alert('✅ API 키가 저장되었습니다. 이제 오탈자 점검 기능을 사용할 수 있습니다.');
                 } else {
@@ -90,8 +127,18 @@ class ReviewExtractor {
         }
         
         if (clearApiKeyBtn) {
-            clearApiKeyBtn.addEventListener('click', () => {
+            clearApiKeyBtn.addEventListener('click', async () => {
                 localStorage.removeItem('claude_api_key');
+                // Firestore에서도 삭제
+                try {
+                    if (window.FirestoreHelper) {
+                        await FirestoreHelper.save('settings', 'claude_api_key', {
+                            apiKey: ''
+                        });
+                    }
+                } catch (error) {
+                    console.error('Firestore에서 API 키 삭제 실패:', error);
+                }
                 if (apiKeyInput) apiKeyInput.value = '';
                 updateApiKeyStatus();
                 alert('API 키가 삭제되었습니다.');
@@ -100,12 +147,16 @@ class ReviewExtractor {
         
         // 저장된 API 키 로드
         if (apiKeyInput) {
-            const savedKey = localStorage.getItem('claude_api_key');
-            if (savedKey) {
-                apiKeyInput.value = savedKey;
-            }
-            // 초기 상태 표시
-            updateApiKeyStatus();
+            loadApiKey().then(savedKey => {
+                if (savedKey) {
+                    apiKeyInput.value = savedKey;
+                }
+                // 초기 상태 표시
+                updateApiKeyStatus();
+            }).catch(err => {
+                console.error('API 키 로드 실패:', err);
+                updateApiKeyStatus();
+            });
         }
     }
 
@@ -564,7 +615,24 @@ class ReviewExtractor {
             return;
         }
 
-        const apiKey = localStorage.getItem('claude_api_key');
+        // API 키 로드 (Firestore 우선, LocalStorage 폴백)
+        let apiKey = null;
+        try {
+            if (window.FirestoreHelper) {
+                const data = await FirestoreHelper.load('settings', 'claude_api_key');
+                if (data && data.apiKey) {
+                    apiKey = data.apiKey;
+                    localStorage.setItem('claude_api_key', apiKey);
+                }
+            }
+        } catch (error) {
+            console.log('Firestore에서 API 키 로드 실패, LocalStorage 사용:', error);
+        }
+        
+        if (!apiKey) {
+            apiKey = localStorage.getItem('claude_api_key');
+        }
+        
         if (!apiKey || !apiKey.trim()) {
             alert('Claude API 키가 필요합니다. API 키를 설정해주세요.');
             return;
@@ -585,8 +653,8 @@ class ReviewExtractor {
                 }
             }
 
-            // 텍스트가 너무 길면 분할 처리
-            const maxLength = 100000; // API 제한을 고려한 최대 길이
+            // 텍스트가 너무 길면 분할 처리 (403 에러 방지를 위해 크기 제한)
+            const maxLength = 30000; // API 제한을 고려한 최대 길이 (Cloudflare 보안 제한 고려)
             let textToCheck = this.extractedText;
             
             if (textToCheck.length > maxLength) {
@@ -595,18 +663,36 @@ class ReviewExtractor {
 
             const prompt = `다음 텍스트에서 오탈자와 문제점을 찾아서 알려주세요.
 
+**주의사항:**
+- 이 텍스트는 파일에서 추출된 것으로, 구조나 형식이 흐트러져 있을 수 있습니다.
+- 구조, 형식, 내용 순서, 도형(그림, 표, 차트 등)은 검수하지 마세요.
+- 텍스트 자체의 오류만 검수해주세요.
+- 괄호와 문장부호 사용만 확인해주세요.
+
 텍스트:
 ${textToCheck}
 
-다음 항목들을 점검해주세요:
-1. 맞춤법 및 띄어쓰기 오류
-2. 번역 누락 (번역되지 않은 부분, 불완전한 번역)
-3. 일관성 문제 (용어 일관성, 문체 일관성)
-4. 문장부호 오류 (한국어 텍스트에서 전각 기호 사용 - 예: ，。！？ 등은 반각으로 수정 필요)
+**한국어 검수 항목 (5가지)**
+1. 맞춤법 오류
+2. 띄어쓰기 오류  
+3. 용어 일관성
+4. 번역 누락
+5. 괄호 및 문장부호 오류 (「」、。등 전각 기호 잔존, 괄호 불일치 등)
+
+**일본어 검수 항목 (5가지)**
+1. 한자 변환 오류
+2. 오탈자
+3. 용어 일관성
+4. 번역 누락
+5. 괄호 및 문장부호 오류 (불필요한 띄어쓰기, 괄호 불일치 등)
+
+**제외 사항:**
+- 도형, 그림, 표, 차트 등의 시각적 요소는 검수하지 않습니다.
+- 텍스트의 구조나 형식은 검수하지 않습니다.
 
 각 문제에 대해 다음 형식으로 답변해주세요:
 - 발견된 부분을 인용
-- 어떤 문제인지 설명
+- 어떤 문제인지 설명 (한국어/일본어 구분)
 - 수정 제안
 
 문제가 없으면 "문제가 발견되지 않았습니다."라고 답변해주세요.`;
@@ -614,36 +700,80 @@ ${textToCheck}
             // 현재 호스트와 포트를 사용하여 API 호출
             const apiUrl = window.getClaudeApiUrl ? window.getClaudeApiUrl() : (window.location.origin + '/api/claude');
             
+            console.log('오탈자 점검 API 호출:', apiUrl);
+            console.log('API 키 존재:', !!apiKey);
+            
+            // 요청 본문 크기 확인
+            const requestBody = {
+                apiKey: apiKey.trim(),
+                model: 'claude-sonnet-4-5-20250929',
+                max_tokens: 4000,
+                temperature: 0.3,
+                system: 'You are a helpful assistant that checks for spelling, grammar, and typographical errors in Korean and Japanese text.',
+                messages: [{ role: 'user', content: prompt }]
+            };
+            const requestBodyString = JSON.stringify(requestBody);
+            const requestBodySize = new Blob([requestBodyString]).size;
+            console.log('요청 본문 크기:', requestBodySize, 'bytes');
+            
+            if (requestBodySize > 100000) { // 100KB 제한
+                alert(`요청 본문이 너무 큽니다 (${Math.round(requestBodySize / 1024)}KB). 텍스트를 더 짧게 나누어서 점검해주세요.`);
+                return;
+            }
+            
             const response = await fetch(apiUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    apiKey: apiKey.trim(),
-                    model: 'claude-sonnet-4-5-20250929',
-                    max_tokens: 4000,
-                    temperature: 0.3,
-                    system: 'You are a helpful assistant that checks for spelling, grammar, and typographical errors in Korean and Japanese text.',
-                    messages: [{ role: 'user', content: prompt }]
-                })
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Origin': window.location.origin,
+                    'Referer': window.location.href
+                },
+                body: requestBodyString
             });
+            
+            console.log('API 응답 상태:', response.status, response.statusText);
 
             if (!response.ok) {
                 let errorMessage = `API 오류: ${response.status}`;
+                let errorDetails = null;
+                
                 try {
-                    const errorData = await response.json();
-                    if (errorData.error?.message) {
-                        errorMessage = errorData.error.message;
-                    } else if (errorData.error) {
-                        errorMessage = JSON.stringify(errorData.error);
+                    const responseText = await response.text();
+                    console.log('API 에러 응답 본문:', responseText);
+                    
+                    if (responseText) {
+                        try {
+                            const errorData = JSON.parse(responseText);
+                            if (errorData.error?.message) {
+                                errorMessage = errorData.error.message;
+                            } else if (errorData.error) {
+                                errorMessage = typeof errorData.error === 'string' ? errorData.error : JSON.stringify(errorData.error);
+                            } else if (errorData.message) {
+                                errorMessage = errorData.message;
+                            }
+                            errorDetails = errorData;
+                        } catch (parseError) {
+                            // JSON이 아닌 경우 텍스트 그대로 사용
+                            errorMessage = responseText || errorMessage;
+                        }
                     }
                 } catch (e) {
-                    // JSON 파싱 실패 시 기본 메시지 사용
-                    if (response.status === 405) {
-                        errorMessage = '서버가 POST 요청을 허용하지 않습니다. Python 서버(server.py)가 포트 3000에서 실행 중인지 확인해주세요.';
-                    } else if (response.status === 404) {
-                        errorMessage = 'API 엔드포인트를 찾을 수 없습니다. Python 서버(server.py)가 실행 중인지 확인해주세요.';
-                    }
+                    console.error('응답 읽기 오류:', e);
                 }
+                
+                // 상태 코드별 기본 메시지
+                if (response.status === 403) {
+                    if (!errorDetails || !errorDetails.error) {
+                        errorMessage = '요청이 거부되었습니다 (403 Forbidden).\n\n가능한 원인:\n1. Cloudflare 보안 설정(WAF)이 요청을 차단\n2. Rate Limiting 초과\n3. 요청 본문이 너무 큼\n\n잠시 후 다시 시도하거나, Cloudflare 대시보드에서 보안 설정을 확인해주세요.';
+                    }
+                } else if (response.status === 405) {
+                    errorMessage = '서버가 POST 요청을 허용하지 않습니다.';
+                } else if (response.status === 404) {
+                    errorMessage = 'API 엔드포인트를 찾을 수 없습니다.';
+                }
+                
                 throw new Error(errorMessage);
             }
 

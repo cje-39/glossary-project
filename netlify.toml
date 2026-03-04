@@ -30,11 +30,6 @@
   to = "/.netlify/functions/confluence"
   status = 200
 
-[[redirects]]
-  from = "/api/teamup"
-  to = "/.netlify/functions/teamup"
-  status = 200
-
 # 헤더 설정 (CORS)
 [[headers]]
   for = "/.netlify/functions/*"

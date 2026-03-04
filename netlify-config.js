@@ -35,24 +35,8 @@ function getConfluenceApiUrl() {
     return '/api/confluence';
 }
 
-// TeamUP API 엔드포인트 URL 생성 함수
-function getTeamupApiUrl() {
-    // 현재 호스트가 Firebase인지 확인
-    const isFirebase = window.location.hostname.includes('firebaseapp.com') || 
-                       window.location.hostname.includes('web.app');
-    
-    // Firebase인 경우 Netlify Functions 사용
-    if (isFirebase && NETLIFY_SITE_URL) {
-        return `${NETLIFY_SITE_URL}/.netlify/functions/teamup`;
-    }
-    
-    // 로컬 개발 환경
-    return '/api/teamup';
-}
-
 // 전역으로 내보내기
 if (typeof window !== 'undefined') {
     window.getClaudeApiUrl = getClaudeApiUrl;
     window.getConfluenceApiUrl = getConfluenceApiUrl;
-    window.getTeamupApiUrl = getTeamupApiUrl;
 }

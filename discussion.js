@@ -220,6 +220,43 @@ class DiscussionManager {
         const clearApiKeyBtn = document.getElementById('clearApiKeyBtn');
         const apiKeyInput = document.getElementById('claudeApiKeyInput');
         
+        // API 키 저장 함수
+        const saveApiKey = async (apiKey) => {
+            // LocalStorage에 즉시 저장
+            localStorage.setItem('claude_api_key', apiKey);
+            
+            // Firestore에도 저장
+            try {
+                if (window.FirestoreHelper) {
+                    await FirestoreHelper.save('settings', 'claude_api_key', {
+                        apiKey: apiKey
+                    });
+                }
+            } catch (error) {
+                console.error('Firestore에 API 키 저장 실패:', error);
+            }
+        };
+        
+        // API 키 로드 함수
+        const loadApiKey = async () => {
+            try {
+                // Firestore에서 먼저 시도
+                if (window.FirestoreHelper) {
+                    const data = await FirestoreHelper.load('settings', 'claude_api_key');
+                    if (data && data.apiKey) {
+                        const apiKey = data.apiKey;
+                        localStorage.setItem('claude_api_key', apiKey);
+                        return apiKey;
+                    }
+                }
+            } catch (error) {
+                console.log('Firestore에서 API 키 로드 실패, LocalStorage 사용:', error);
+            }
+            
+            // LocalStorage에서 로드
+            return localStorage.getItem('claude_api_key');
+        };
+        
         // API 키 상태 표시 업데이트 함수
         const updateApiKeyStatus = () => {
             const apiKey = localStorage.getItem('claude_api_key');
@@ -247,10 +284,10 @@ class DiscussionManager {
         };
         
         if (saveApiKeyBtn && apiKeyInput) {
-            saveApiKeyBtn.addEventListener('click', () => {
+            saveApiKeyBtn.addEventListener('click', async () => {
                 const apiKey = apiKeyInput.value.trim();
                 if (apiKey) {
-                    localStorage.setItem('claude_api_key', apiKey);
+                    await saveApiKey(apiKey);
                     updateApiKeyStatus();
                     alert('✅ API 키가 저장되었습니다. 이제 번역어 자동 제안(AI) 기능을 사용할 수 있습니다.');
                 } else {
@@ -260,8 +297,18 @@ class DiscussionManager {
         }
         
         if (clearApiKeyBtn) {
-            clearApiKeyBtn.addEventListener('click', () => {
+            clearApiKeyBtn.addEventListener('click', async () => {
                 localStorage.removeItem('claude_api_key');
+                // Firestore에서도 삭제
+                try {
+                    if (window.FirestoreHelper) {
+                        await FirestoreHelper.save('settings', 'claude_api_key', {
+                            apiKey: ''
+                        });
+                    }
+                } catch (error) {
+                    console.error('Firestore에서 API 키 삭제 실패:', error);
+                }
                 if (apiKeyInput) apiKeyInput.value = '';
                 updateApiKeyStatus();
                 alert('API 키가 삭제되었습니다.');
@@ -270,12 +317,16 @@ class DiscussionManager {
         
         // 저장된 API 키 로드
         if (apiKeyInput) {
-            const savedKey = localStorage.getItem('claude_api_key');
-            if (savedKey) {
-                apiKeyInput.value = savedKey;
-            }
-            // 초기 상태 표시
-            updateApiKeyStatus();
+            loadApiKey().then(savedKey => {
+                if (savedKey) {
+                    apiKeyInput.value = savedKey;
+                }
+                // 초기 상태 표시
+                updateApiKeyStatus();
+            }).catch(err => {
+                console.error('API 키 로드 실패:', err);
+                updateApiKeyStatus();
+            });
         }
     }
 
@@ -669,7 +720,7 @@ class DiscussionManager {
 
         // 해결 섹션
         if (resolvedPosts.length > 0) {
-            html += '<div class="posts-section">';
+            html += '<div class="posts-section resolved-section">';
             html += '<h3 class="section-title resolved-title">해결!</h3>';
             html += '<div class="posts-table-wrapper">';
             html += '<table class="posts-table">';

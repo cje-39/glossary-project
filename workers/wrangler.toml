@@ -1,0 +1,12 @@
+# Cloudflare Workers 설정 파일
+# wrangler CLI를 사용하여 배포합니다.
+
+compatibility_date = "2026-02-05"
+
+# 보안 설정 (WAF 우회를 위한 설정)
+# 참고: 커스텀 도메인을 사용하지 않으므로 routes 설정이 필요 없습니다.
+# 기본적으로 Cloudflare Workers는 *.workers.dev 서브도메인을 제공합니다.
+# routes 설정은 커스텀 도메인을 사용할 때만 필요합니다.
+
+[env.production]
+name = "claude-api-proxy"

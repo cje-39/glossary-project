@@ -2,11 +2,12 @@
 // This function handles CORS and proxies requests to Anthropic Claude API
 
 exports.handler = async (event, context) => {
-  // CORS 헤더 설정
+  // CORS 헤더 설정 (모든 도메인 허용)
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+    'Access-Control-Max-Age': '86400', // 24시간
     'Content-Type': 'application/json'
   };
 
