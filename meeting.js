@@ -408,6 +408,13 @@ class MeetingManager {
             );
         }
 
+        // 날짜 정렬
+        filteredMeetings = [...filteredMeetings].sort((a, b) => {
+            const dateA = new Date(a.dateTime || a.createdAt);
+            const dateB = new Date(b.dateTime || b.createdAt);
+            return this.dateSortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+        });
+
         if (filteredMeetings.length === 0) {
             meetingList.innerHTML = `
                 <div class="empty-state">
@@ -419,7 +426,27 @@ class MeetingManager {
             return;
         }
 
-        const html = filteredMeetings.map(meeting => {
+        // 테이블 헤더
+        const sortIcon = this.dateSortOrder === 'asc' ? '▲' : '▼';
+        let html = `
+            <table class="meeting-table" style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <thead>
+                    <tr style="background: #f8f9fa; border-bottom: 2px solid #e0e0e0;">
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #333; cursor: pointer; user-select: none; position: relative;" 
+                            onclick="window.meetingManager && window.meetingManager.toggleDateSort()">
+                            날짜 <span style="color: #999; font-size: 0.8em; margin-left: 4px;">${sortIcon}</span>
+                        </th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">회의명</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">참석자</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">논의 내용</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">참고 사항</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600; color: #333; width: 120px;">관리</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        filteredMeetings.forEach(meeting => {
             const dateTime = new Date(meeting.dateTime);
             const formattedDate = dateTime.toLocaleDateString('ko-KR', {
                 year: 'numeric',
