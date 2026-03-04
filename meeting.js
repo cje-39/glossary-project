@@ -290,17 +290,17 @@ class MeetingManager {
             <table class="meeting-table" style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                 <thead>
                     <tr style="background: #f8f9fa; border-bottom: 2px solid #e0e0e0;">
-                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #333; cursor: pointer; user-select: none; position: relative;" 
+                        <th style="padding: 6px 8px; text-align: left; font-weight: 600; color: #333; cursor: pointer; user-select: none; position: relative; white-space: nowrap; width: 90px;" 
                             onclick="window.meetingManager && window.meetingManager.toggleDateSort()">
                             날짜 <span style="color: #999; font-size: 0.8em; margin-left: 4px;">${sortIcon}</span>
                         </th>
-                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">카테고리</th>
-                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">회의명</th>
-                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">담당자</th>
-                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">참석자</th>
+                        <th style="padding: 6px 8px; text-align: left; font-weight: 600; color: #333; white-space: nowrap; width: 80px;">카테고리</th>
+                        <th style="padding: 6px 8px; text-align: left; font-weight: 600; color: #333; white-space: nowrap; width: 120px;">회의명</th>
+                        <th style="padding: 6px 8px; text-align: left; font-weight: 600; color: #333; white-space: nowrap; width: 100px;">담당자</th>
+                        <th style="padding: 6px 8px; text-align: left; font-weight: 600; color: #333; white-space: nowrap; width: 100px;">참석자</th>
                         <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">논의 내용</th>
                         <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">참고 사항</th>
-                        <th style="padding: 12px; text-align: center; font-weight: 600; color: #333; width: 80px;">관리</th>
+                        <th style="padding: 6px 8px; text-align: center; font-weight: 600; color: #333; white-space: nowrap; width: 60px;">관리</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -350,32 +350,32 @@ class MeetingManager {
                 <tr style="border-bottom: 1px solid #f0f0f0; transition: background 0.2s;" 
                     onmouseover="this.style.background='#fafafa'"
                     onmouseout="this.style.background='white'">
-                    <td style="padding: 12px; color: #666; font-size: 0.9em; white-space: nowrap;">${dateOnly}</td>
-                    <td style="padding: 12px;">
+                    <td style="padding: 6px 8px; color: #666; font-size: 0.9em; white-space: nowrap;">${dateOnly}</td>
+                    <td style="padding: 6px 8px;">
                         <span class="meeting-tag" style="background-color: ${categoryColor}20; border: 1px solid ${categoryColor}60; color: ${categoryColor}; font-weight: 600; font-size: 0.85em;">
                             ${this.escapeHtml(categoryDisplayName)}
                         </span>
                     </td>
-                    <td style="padding: 12px;">
-                        <strong style="color: #333; cursor: pointer;" onclick="window.meetingManager && window.meetingManager.viewMeeting('${meeting.id}')">${this.escapeHtml(meeting.title)}</strong>
+                    <td style="padding: 6px 8px;">
+                        <strong style="color: #333; cursor: pointer; font-size: 0.9em;" onclick="window.meetingManager && window.meetingManager.viewMeeting('${meeting.id}')">${this.escapeHtml(meeting.title)}</strong>
                     </td>
-                    <td style="padding: 12px; font-size: 0.9em;">
+                    <td style="padding: 6px 8px; font-size: 0.85em;">
                         ${assigneeHtml}
                     </td>
-                    <td style="padding: 12px; font-size: 0.9em;">
+                    <td style="padding: 6px 8px; font-size: 0.85em;">
                         ${attendeesHtml}
                     </td>
-                    <td style="padding: 12px; font-size: 0.9em; color: #666; max-width: 300px;">
+                    <td style="padding: 12px; font-size: 0.9em; color: #666;">
                         <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${this.escapeHtml(meeting.content || '')}">
                             ${this.escapeHtml(contentPreview)}
                         </div>
                     </td>
-                    <td style="padding: 12px; font-size: 0.9em; color: #666; max-width: 200px;">
+                    <td style="padding: 12px; font-size: 0.9em; color: #666;">
                         <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${this.escapeHtml(meeting.notes || '')}">
                             ${this.escapeHtml(notesPreview)}
                         </div>
                     </td>
-                    <td style="padding: 12px; text-align: center;">
+                    <td style="padding: 6px 8px; text-align: center;">
                         <span style="color: #666; font-size: 0.85em; cursor: pointer; text-decoration: underline;" 
                               onclick="event.stopPropagation(); window.meetingManager && window.meetingManager.openEditModal('${meeting.id}')"
                               onmouseover="this.style.color='#2b68dc'"
