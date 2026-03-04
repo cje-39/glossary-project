@@ -430,14 +430,23 @@ class MeetingManager {
 
             let attendeesHtml = '';
             if (meeting.attendeesImage) {
-                // 이미지가 있는 경우
+                // 이미지가 있는 경우 - 접힌 상태로 표시
                 attendeesHtml = `
                     <div style="margin-top: 8px;">
-                        <img src="${meeting.attendeesImage}" 
-                             style="max-width: 200px; max-height: 150px; border-radius: 4px; border: 1px solid #e0e0e0; cursor: pointer;" 
-                             onclick="window.meetingManager && window.meetingManager.showAttendeesImageModal('${meeting.id}')"
-                             title="클릭하여 크게 보기">
-                        <div style="color: #666; font-size: 0.8em; margin-top: 4px;">📷 참석자 목록 (클릭하여 크게 보기)</div>
+                        <div style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px; background: #fafafa; transition: background 0.2s;" 
+                             onclick="window.meetingManager && window.meetingManager.toggleAttendeesImage('${meeting.id}', this)"
+                             onmouseover="this.style.background='#f0f0f0'"
+                             onmouseout="this.style.background='#fafafa'">
+                            <span style="font-size: 1.2em;">📷</span>
+                            <span style="color: #666; font-size: 0.9em; font-weight: 500;">참석자 목록 보기</span>
+                            <span style="margin-left: auto; color: #999; font-size: 0.85em;">▼</span>
+                        </div>
+                        <div id="attendeesImage_${meeting.id}" style="display: none; margin-top: 8px;">
+                            <img src="${meeting.attendeesImage}" 
+                                 style="max-width: 100%; max-height: 400px; border-radius: 4px; border: 1px solid #e0e0e0; cursor: pointer;" 
+                                 onclick="window.meetingManager && window.meetingManager.showAttendeesImageModal('${meeting.id}')"
+                                 title="클릭하여 크게 보기">
+                        </div>
                     </div>
                 `;
             } else if (meeting.attendees && meeting.attendees.length > 0) {
@@ -733,14 +742,23 @@ class MeetingManager {
 
         let attendeesHtml = '';
         if (meeting.attendeesImage) {
-            // 이미지가 있는 경우
+            // 이미지가 있는 경우 - 접힌 상태로 표시
             attendeesHtml = `
                 <div style="margin-top: 8px;">
-                    <img src="${meeting.attendeesImage}" 
-                         style="max-width: 100%; max-height: 300px; border-radius: 4px; border: 1px solid #e0e0e0; cursor: pointer;" 
-                         onclick="window.meetingManager && window.meetingManager.showAttendeesImageModal('${meeting.id}')"
-                         title="클릭하여 크게 보기">
-                    <div style="color: #666; font-size: 0.85em; margin-top: 4px;">클릭하여 크게 보기</div>
+                    <div style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px; background: #fafafa; transition: background 0.2s;" 
+                         onclick="window.meetingManager && window.meetingManager.toggleAttendeesImage('${meeting.id}', this)"
+                         onmouseover="this.style.background='#f0f0f0'"
+                         onmouseout="this.style.background='#fafafa'">
+                        <span style="font-size: 1.2em;">📷</span>
+                        <span style="color: #666; font-size: 0.9em; font-weight: 500;">참석자 목록 보기</span>
+                        <span style="margin-left: auto; color: #999; font-size: 0.85em;">▼</span>
+                    </div>
+                    <div id="attendeesImageDetail_${meeting.id}" style="display: none; margin-top: 8px;">
+                        <img src="${meeting.attendeesImage}" 
+                             style="max-width: 100%; max-height: 400px; border-radius: 4px; border: 1px solid #e0e0e0; cursor: pointer;" 
+                             onclick="window.meetingManager && window.meetingManager.showAttendeesImageModal('${meeting.id}')"
+                             title="클릭하여 크게 보기">
+                    </div>
                 </div>
             `;
         } else if (meeting.attendees && meeting.attendees.length > 0) {
@@ -819,6 +837,30 @@ class MeetingManager {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+    
+    // 참석자 이미지 접기/펼치기
+    toggleAttendeesImage(meetingId, toggleButton) {
+        // 목록 뷰에서
+        const listImageDiv = document.getElementById(`attendeesImage_${meetingId}`);
+        // 상세보기 뷰에서
+        const detailImageDiv = document.getElementById(`attendeesImageDetail_${meetingId}`);
+        
+        const imageDiv = listImageDiv || detailImageDiv;
+        if (!imageDiv) return;
+        
+        const isExpanded = imageDiv.style.display !== 'none';
+        const arrow = toggleButton.querySelector('span:last-child');
+        
+        if (isExpanded) {
+            // 접기
+            imageDiv.style.display = 'none';
+            if (arrow) arrow.textContent = '▼';
+        } else {
+            // 펼치기
+            imageDiv.style.display = 'block';
+            if (arrow) arrow.textContent = '▲';
+        }
     }
     
     // 참석자 이미지 모달 표시
