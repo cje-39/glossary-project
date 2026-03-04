@@ -354,14 +354,18 @@ class MeetingManager {
                     <div style="margin-top: 12px;">
                         <strong style="color: #333; display: block; margin-bottom: 4px;">논의 내용:</strong>
                         <div style="background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 0 4px; white-space: pre-wrap; line-height: 1.3; display: inline-block; width: 100%; color: #333; text-indent: 0;">
-                            ${this.escapeHtml(meeting.content || '-')}
+                            <div style="text-indent: 0; margin: 0; padding: 0;">
+                                ${this.escapeHtml((meeting.content || '-').replace(/^\s+/, ''))}
+                            </div>
                         </div>
                     </div>
                     ${meeting.notes ? `
                     <div style="margin-top: 12px;">
                         <strong style="color: #333; display: block; margin-bottom: 4px;">참고 사항:</strong>
                         <div style="background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 0 4px; white-space: pre-wrap; line-height: 1.3; display: inline-block; width: 100%; color: #666; text-indent: 0;">
-                            ${this.escapeHtml(meeting.notes)}
+                            <div style="text-indent: 0; margin: 0; padding: 0;">
+                                ${this.escapeHtml(meeting.notes.replace(/^\s+/, ''))}
+                            </div>
                         </div>
                     </div>
                     ` : ''}
