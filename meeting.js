@@ -294,7 +294,9 @@ class MeetingManager {
                             onclick="window.meetingManager && window.meetingManager.toggleDateSort()">
                             날짜 <span style="color: #999; font-size: 0.8em; margin-left: 4px;">${sortIcon}</span>
                         </th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">카테고리</th>
                         <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">회의명</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">담당자</th>
                         <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">참석자</th>
                         <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">논의 내용</th>
                         <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">참고 사항</th>
