@@ -432,9 +432,9 @@ class MeetingManager {
             if (meeting.attendeesImage) {
                 // 이미지가 있는 경우 - 접힌 상태로 표시
                 attendeesHtml = `
-                    <div style="margin-top: 8px;">
+                    <div style="margin-top: 8px;" onclick="event.stopPropagation();">
                         <div style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px; background: #fafafa; transition: background 0.2s;" 
-                             onclick="window.meetingManager && window.meetingManager.toggleAttendeesImage('${meeting.id}', this)"
+                             onclick="event.stopPropagation(); window.meetingManager && window.meetingManager.toggleAttendeesImage('${meeting.id}', this)"
                              onmouseover="this.style.background='#f0f0f0'"
                              onmouseout="this.style.background='#fafafa'">
                             <span style="font-size: 1.2em;">📷</span>
@@ -444,7 +444,7 @@ class MeetingManager {
                         <div id="attendeesImage_${meeting.id}" style="display: none; margin-top: 8px;">
                             <img src="${meeting.attendeesImage}" 
                                  style="max-width: 100%; max-height: 400px; border-radius: 4px; border: 1px solid #e0e0e0; cursor: pointer;" 
-                                 onclick="window.meetingManager && window.meetingManager.showAttendeesImageModal('${meeting.id}')"
+                                 onclick="event.stopPropagation(); window.meetingManager && window.meetingManager.showAttendeesImageModal('${meeting.id}')"
                                  title="클릭하여 크게 보기">
                         </div>
                     </div>
@@ -460,7 +460,7 @@ class MeetingManager {
             const categoryDisplayName = meeting.category ? meeting.category.replace(/^#/, '') : '';
             
             return `
-                <div class="meeting-item" onclick="window.meetingManager.viewMeeting('${meeting.id}')">
+                <div class="meeting-item" onclick="if(!event.target.closest('[onclick*=\"toggleAttendeesImage\"]') && !event.target.closest('[onclick*=\"showAttendeesImageModal\"]')) { window.meetingManager.viewMeeting('${meeting.id}'); }">
                     <div class="meeting-item-header">
                         <div class="meeting-item-title">${this.escapeHtml(meeting.title)}</div>
                         <div class="meeting-item-meta">
