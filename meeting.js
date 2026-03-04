@@ -330,7 +330,13 @@ class MeetingManager {
             }
             
             html += `
-                <div class="meeting-item" onclick="window.meetingManager && window.meetingManager.viewMeeting('${meeting.id}')">
+                <div class="meeting-item" onclick="window.meetingManager && window.meetingManager.viewMeeting('${meeting.id}')" style="position: relative;">
+                    <div style="position: absolute; top: 15px; right: 15px; z-index: 10;">
+                        <span style="background: #f0f0f0; color: #666; font-size: 0.85em; cursor: pointer; padding: 6px 12px; border-radius: 4px; display: inline-block; transition: background 0.2s;" 
+                              onclick="event.stopPropagation(); window.meetingManager && window.meetingManager.openEditModal('${meeting.id}')"
+                              onmouseover="this.style.background='#e0e0e0'"
+                              onmouseout="this.style.background='#f0f0f0'">수정</span>
+                    </div>
                     <div class="meeting-item-header">
                         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                             <span class="meeting-tag" style="background-color: ${categoryColor}20; border: 1px solid ${categoryColor}60; color: ${categoryColor}; font-weight: 600;">
@@ -340,24 +346,24 @@ class MeetingManager {
                         </div>
                         <div class="meeting-item-meta">
                             <span>${formattedDate}</span>
-                            <span style="color: #666; font-size: 0.85em; cursor: pointer; text-decoration: underline;" 
-                                  onclick="event.stopPropagation(); window.meetingManager && window.meetingManager.openEditModal('${meeting.id}')"
-                                  onmouseover="this.style.color='#2b68dc'"
-                                  onmouseout="this.style.color='#666'">수정</span>
                         </div>
                     </div>
-                    <div style="margin-top: 12px; margin-bottom: 12px; display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.9em; color: #666;">
+                    <div style="margin-top: 12px; margin-bottom: 8px; display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.9em; color: #666;">
                         <div><strong>담당자:</strong> ${assigneeHtml}</div>
                         <div><strong>참석자:</strong> ${attendeesHtml}</div>
                     </div>
-                    <div class="meeting-item-content" style="white-space: pre-wrap; line-height: 1.6;">
-                        <strong style="color: #333; display: block; margin-bottom: 8px;">논의 내용:</strong>
-                        ${this.escapeHtml(meeting.content || '-')}
+                    <div style="background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 16px; margin-top: 8px; white-space: pre-wrap; line-height: 1.6;">
+                        <strong style="color: #333; display: block; margin-bottom: 10px;">논의 내용:</strong>
+                        <div style="color: #333;">
+                            ${this.escapeHtml(meeting.content || '-')}
+                        </div>
                     </div>
                     ${meeting.notes ? `
-                    <div class="meeting-item-content" style="white-space: pre-wrap; line-height: 1.6; margin-top: 12px; color: #666;">
-                        <strong style="color: #333; display: block; margin-bottom: 8px;">참고 사항:</strong>
-                        ${this.escapeHtml(meeting.notes)}
+                    <div style="background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 16px; margin-top: 12px; white-space: pre-wrap; line-height: 1.6;">
+                        <strong style="color: #333; display: block; margin-bottom: 10px;">참고 사항:</strong>
+                        <div style="color: #666;">
+                            ${this.escapeHtml(meeting.notes)}
+                        </div>
                     </div>
                     ` : ''}
                 </div>
