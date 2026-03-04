@@ -900,12 +900,14 @@ class MeetingManager {
             const notes = event.notes || '';
             
             const eventId = event.id || event.event_id || Math.random().toString(36).substr(2, 9);
+            const eventData = JSON.stringify(event).replace(/'/g, "&#39;").replace(/"/g, '&quot;');
             html += `
                 <div style="padding: 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: white; cursor: pointer; transition: background 0.2s;"
                      onmouseover="this.style.background='#f8f9fa'"
                      onmouseout="this.style.background='white'"
                      onclick="window.meetingManager && window.meetingManager.createMeetingFromEvent('${eventId}')"
-                     data-event='${JSON.stringify(event).replace(/'/g, "&#39;")}'>
+                     data-event-id="${eventId}"
+                     data-event="${eventData}">
                     <div style="font-weight: 600; color: #333; margin-bottom: 4px;">${this.escapeHtml(title)}</div>
                     <div style="font-size: 0.9em; color: #666;">${formattedDate}</div>
                     ${notes ? `<div style="font-size: 0.85em; color: #999; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(notes.substring(0, 50))}${notes.length > 50 ? '...' : ''}</div>` : ''}
@@ -918,7 +920,22 @@ class MeetingManager {
     }
 
     // TeamUP 일정에서 회의록 생성
-    createMeetingFromEvent(event) {
+    createMeetingFromEvent(eventId) {
+        // 이벤트 데이터 가져오기
+        const eventElement = document.querySelector(`[data-event-id="${eventId}"]`);
+        if (!eventElement) return;
+        
+        const eventDataStr = eventElement.getAttribute('data-event');
+        if (!eventDataStr) return;
+        
+        let event;
+        try {
+            event = JSON.parse(eventDataStr.replace(/&#39;/g, "'"));
+        } catch (e) {
+            console.error('이벤트 데이터 파싱 실패:', e);
+            return;
+        }
+        
         const startDate = new Date(event.start_dt || event.start);
         const endDate = new Date(event.end_dt || event.end);
         
