@@ -284,26 +284,22 @@ class MeetingManager {
             return;
         }
 
-        // 테이블 헤더
+        // 날짜 정렬 아이콘
         const sortIcon = this.dateSortOrder === 'asc' ? '▲' : '▼';
+        
+        // 정렬 헤더
         let html = `
-            <table class="meeting-table" style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); table-layout: fixed;">
-                <thead>
-                    <tr style="background: #f8f9fa; border-bottom: 2px solid #e0e0e0;">
-                        <th style="padding: 6px 8px; text-align: left; font-weight: 600; color: #333; cursor: pointer; user-select: none; position: relative; white-space: nowrap; width: 90px;" 
-                            onclick="window.meetingManager && window.meetingManager.toggleDateSort()">
-                            날짜 <span style="color: #999; font-size: 0.8em; margin-left: 4px;">${sortIcon}</span>
-                        </th>
-                        <th style="padding: 6px 8px; text-align: left; font-weight: 600; color: #333; white-space: nowrap; width: 80px;">카테고리</th>
-                        <th style="padding: 6px 8px; text-align: left; font-weight: 600; color: #333; white-space: nowrap; width: 120px;">회의명</th>
-                        <th style="padding: 6px 8px; text-align: left; font-weight: 600; color: #333; white-space: nowrap; width: 100px;">담당자</th>
-                        <th style="padding: 6px 8px; text-align: left; font-weight: 600; color: #333; white-space: nowrap; width: 100px;">참석자</th>
-                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">논의 내용</th>
-                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">참고 사항</th>
-                        <th style="padding: 6px 8px; text-align: center; font-weight: 600; color: #333; white-space: nowrap; width: 60px;">관리</th>
-                    </tr>
-                </thead>
-                <tbody>
+            <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="color: #666; font-size: 0.9em;">정렬:</span>
+                    <span style="color: #333; font-weight: 600; cursor: pointer; user-select: none; padding: 6px 12px; border-radius: 4px; background: #f8f9fa; transition: background 0.2s;" 
+                          onclick="window.meetingManager && window.meetingManager.toggleDateSort()"
+                          onmouseover="this.style.background='#e9ecef'"
+                          onmouseout="this.style.background='#f8f9fa'">
+                        날짜 ${sortIcon}
+                    </span>
+                </div>
+            </div>
         `;
 
         filteredMeetings.forEach(meeting => {
@@ -316,77 +312,57 @@ class MeetingManager {
                 minute: '2-digit'
             });
 
-            // 참석자 표시 (텍스트만)
+            // 참석자 표시
             let attendeesHtml = '없음';
             if (meeting.attendees && meeting.attendees.length > 0) {
-                attendeesHtml = meeting.attendees.map(a => `<span class="meeting-tag" style="display: inline-block; margin: 2px;">${this.escapeHtml(a)}</span>`).join('');
+                attendeesHtml = meeting.attendees.map(a => `<span class="meeting-tag">${this.escapeHtml(a)}</span>`).join('');
             }
 
             const categoryColor = this.getCategoryColor(meeting.category);
             const categoryDisplayName = meeting.category ? meeting.category.replace(/^#/, '') : '';
             
-            // 날짜 포맷 (간단한 형식)
-            const dateOnly = dateTime.toLocaleDateString('ko-KR', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit'
-            });
-            
             // 담당자 표시
             let assigneeHtml = '-';
             if (Array.isArray(meeting.assignee) && meeting.assignee.length > 0) {
-                assigneeHtml = meeting.assignee.map(a => `<span class="meeting-tag" style="display: inline-block; margin: 2px;">${this.escapeHtml(a)}</span>`).join('');
+                assigneeHtml = meeting.assignee.map(a => `<span class="meeting-tag">${this.escapeHtml(a)}</span>`).join('');
             } else if (meeting.assignee) {
-                assigneeHtml = `<span class="meeting-tag" style="display: inline-block; margin: 2px;">${this.escapeHtml(meeting.assignee)}</span>`;
+                assigneeHtml = `<span class="meeting-tag">${this.escapeHtml(meeting.assignee)}</span>`;
             }
             
             html += `
-                <tr style="border-bottom: 1px solid #f0f0f0; transition: background 0.2s;" 
-                    onmouseover="this.style.background='#fafafa'"
-                    onmouseout="this.style.background='white'">
-                    <td style="padding: 6px 8px; color: #666; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${dateOnly}</td>
-                    <td style="padding: 6px 8px; overflow: hidden; word-wrap: break-word;">
-                        <span class="meeting-tag" style="background-color: ${categoryColor}20; border: 1px solid ${categoryColor}60; color: ${categoryColor}; font-weight: 600; font-size: 0.85em; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                            ${this.escapeHtml(categoryDisplayName)}
-                        </span>
-                    </td>
-                    <td style="padding: 6px 8px; overflow: hidden; word-wrap: break-word; white-space: normal;">
-                        <strong style="color: #333; cursor: pointer; font-size: 0.9em; display: block; line-height: 1.4;" onclick="window.meetingManager && window.meetingManager.viewMeeting('${meeting.id}')">${this.escapeHtml(meeting.title)}</strong>
-                    </td>
-                    <td style="padding: 6px 8px; font-size: 0.85em; overflow: hidden; word-wrap: break-word;">
-                        <div style="line-height: 1.4;">
-                            ${assigneeHtml}
+                <div class="meeting-item" onclick="window.meetingManager && window.meetingManager.viewMeeting('${meeting.id}')">
+                    <div class="meeting-item-header">
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <span class="meeting-tag" style="background-color: ${categoryColor}20; border: 1px solid ${categoryColor}60; color: ${categoryColor}; font-weight: 600;">
+                                ${this.escapeHtml(categoryDisplayName)}
+                            </span>
+                            <h3 class="meeting-item-title">${this.escapeHtml(meeting.title)}</h3>
                         </div>
-                    </td>
-                    <td style="padding: 6px 8px; font-size: 0.85em; overflow: hidden; word-wrap: break-word;">
-                        <div style="line-height: 1.4;">
-                            ${attendeesHtml}
+                        <div class="meeting-item-meta">
+                            <span>${formattedDate}</span>
+                            <span style="color: #666; font-size: 0.85em; cursor: pointer; text-decoration: underline;" 
+                                  onclick="event.stopPropagation(); window.meetingManager && window.meetingManager.openEditModal('${meeting.id}')"
+                                  onmouseover="this.style.color='#2b68dc'"
+                                  onmouseout="this.style.color='#666'">수정</span>
                         </div>
-                    </td>
-                    <td style="padding: 12px; font-size: 0.9em; color: #666; word-wrap: break-word; white-space: pre-wrap;">
-                        <div style="line-height: 1.5;">
-                            ${this.escapeHtml(meeting.content || '-')}
-                        </div>
-                    </td>
-                    <td style="padding: 12px; font-size: 0.9em; color: #666; word-wrap: break-word; white-space: pre-wrap;">
-                        <div style="line-height: 1.5;">
-                            ${this.escapeHtml(meeting.notes || '-')}
-                        </div>
-                    </td>
-                    <td style="padding: 6px 8px; text-align: center; white-space: nowrap;">
-                        <span style="color: #666; font-size: 0.85em; cursor: pointer; text-decoration: underline;" 
-                              onclick="event.stopPropagation(); window.meetingManager && window.meetingManager.openEditModal('${meeting.id}')"
-                              onmouseover="this.style.color='#2b68dc'"
-                              onmouseout="this.style.color='#666'">수정</span>
-                    </td>
-                </tr>
+                    </div>
+                    <div style="margin-top: 12px; margin-bottom: 12px; display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.9em; color: #666;">
+                        <div><strong>담당자:</strong> ${assigneeHtml}</div>
+                        <div><strong>참석자:</strong> ${attendeesHtml}</div>
+                    </div>
+                    <div class="meeting-item-content" style="white-space: pre-wrap; line-height: 1.6;">
+                        <strong style="color: #333; display: block; margin-bottom: 8px;">논의 내용:</strong>
+                        ${this.escapeHtml(meeting.content || '-')}
+                    </div>
+                    ${meeting.notes ? `
+                    <div class="meeting-item-content" style="white-space: pre-wrap; line-height: 1.6; margin-top: 12px; color: #666;">
+                        <strong style="color: #333; display: block; margin-bottom: 8px;">참고 사항:</strong>
+                        ${this.escapeHtml(meeting.notes)}
+                    </div>
+                    ` : ''}
+                </div>
             `;
         });
-
-        html += `
-                </tbody>
-            </table>
-        `;
 
         meetingList.innerHTML = html;
     }
