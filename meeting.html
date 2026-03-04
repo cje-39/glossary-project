@@ -243,6 +243,11 @@
             margin-right: 6px;
             margin-bottom: 6px;
         }
+        
+        #attendeesImageDropZone:hover {
+            border-color: #2b68dc;
+            background: #f0f4ff;
+        }
     </style>
 </head>
 <body>
@@ -322,8 +327,28 @@
 
                 <div class="meeting-form-group">
                     <label>참석자</label>
-                    <input type="text" id="meetingAttendees" placeholder="참석자 이름을 입력하세요 (쉼표로 구분)">
-                    <small style="color: #666; font-size: 0.85em; margin-top: 5px; display: block;">여러 명을 입력할 경우 쉼표(,)로 구분하세요. 예: 홍길동, 김철수, 이영희</small>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <input type="text" id="meetingAttendees" placeholder="참석자 이름을 입력하세요 (쉼표로 구분)">
+                        <small style="color: #666; font-size: 0.85em;">또는</small>
+                        <div style="border: 2px dashed #e0e0e0; border-radius: 8px; padding: 20px; text-align: center; background: #fafafa; cursor: pointer; transition: all 0.2s;" 
+                             id="attendeesImageDropZone"
+                             ondrop="window.meetingManager && window.meetingManager.handleAttendeesImageDrop(event)"
+                             ondragover="window.meetingManager && window.meetingManager.handleAttendeesImageDragOver(event)"
+                             ondragleave="window.meetingManager && window.meetingManager.handleAttendeesImageDragLeave(event)"
+                             onclick="document.getElementById('attendeesImageInput').click()">
+                            <input type="file" id="attendeesImageInput" accept="image/*" style="display: none;" onchange="window.meetingManager && window.meetingManager.handleAttendeesImageSelect(event)">
+                            <div id="attendeesImagePreview" style="display: none;">
+                                <img id="attendeesImagePreviewImg" style="max-width: 100%; max-height: 200px; border-radius: 4px; margin-bottom: 10px;">
+                                <button type="button" class="btn btn-secondary" onclick="window.meetingManager && window.meetingManager.removeAttendeesImage()" style="padding: 6px 12px; font-size: 12px;">이미지 제거</button>
+                            </div>
+                            <div id="attendeesImagePlaceholder">
+                                <div style="font-size: 2em; margin-bottom: 10px;">📷</div>
+                                <div style="color: #666; font-size: 0.9em;">줌 캡쳐 이미지를 드래그하거나 클릭하여 붙여넣기</div>
+                                <div style="color: #999; font-size: 0.8em; margin-top: 5px;">또는 Ctrl+V로 붙여넣기</div>
+                            </div>
+                        </div>
+                    </div>
+                    <small style="color: #666; font-size: 0.85em; margin-top: 5px; display: block;">텍스트로 입력하거나 이미지로 붙여넣을 수 있습니다.</small>
                 </div>
 
                 <div class="meeting-form-group">
