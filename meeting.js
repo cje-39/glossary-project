@@ -363,13 +363,13 @@ class MeetingManager {
                     <td style="padding: 6px 8px; overflow: hidden; word-wrap: break-word;">
                         <strong style="color: #333; cursor: pointer; font-size: 0.9em; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" onclick="window.meetingManager && window.meetingManager.viewMeeting('${meeting.id}')" title="${this.escapeHtml(meeting.title)}">${this.escapeHtml(meeting.title)}</strong>
                     </td>
-                    <td style="padding: 6px 8px; font-size: 0.85em; overflow: hidden; word-wrap: break-word; max-width: 100px;">
-                        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                    <td style="padding: 6px 8px; font-size: 0.85em; overflow: hidden; word-wrap: break-word;">
+                        <div style="line-height: 1.4;">
                             ${assigneeHtml}
                         </div>
                     </td>
-                    <td style="padding: 6px 8px; font-size: 0.85em; overflow: hidden; word-wrap: break-word; max-width: 100px;">
-                        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                    <td style="padding: 6px 8px; font-size: 0.85em; overflow: hidden; word-wrap: break-word;">
+                        <div style="line-height: 1.4;">
                             ${attendeesHtml}
                         </div>
                     </td>
