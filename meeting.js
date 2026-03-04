@@ -363,12 +363,12 @@ class MeetingManager {
                             ${attendeesHtml}
                         </div>
                     </td>
-                    <td style="padding: 12px; font-size: 0.9em; color: #666; word-wrap: break-word; white-space: normal;">
+                    <td style="padding: 12px; font-size: 0.9em; color: #666; word-wrap: break-word; white-space: pre-wrap;">
                         <div style="line-height: 1.5;">
                             ${this.escapeHtml(meeting.content || '-')}
                         </div>
                     </td>
-                    <td style="padding: 12px; font-size: 0.9em; color: #666; word-wrap: break-word; white-space: normal;">
+                    <td style="padding: 12px; font-size: 0.9em; color: #666; word-wrap: break-word; white-space: pre-wrap;">
                         <div style="line-height: 1.5;">
                             ${this.escapeHtml(meeting.notes || '-')}
                         </div>
