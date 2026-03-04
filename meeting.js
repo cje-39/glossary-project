@@ -99,11 +99,41 @@ class MeetingManager {
         const searchInput = document.getElementById('meetingSearchInput');
         if (searchInput) {
             searchInput.addEventListener('input', (e) => {
+                // 실시간 검색은 유지하되, 하이라이트를 위해 검색어 저장
                 this.searchQuery = e.target.value.trim().toLowerCase();
                 this.renderMeetings();
             });
         }
 
+        // 검색 버튼
+        const searchBtn = document.getElementById('searchBtn');
+        if (searchBtn) {
+            searchBtn.addEventListener('click', () => {
+                this.performSearch();
+            });
+        }
+
+    }
+
+    // 검색 실행
+    performSearch() {
+        const searchInput = document.getElementById('meetingSearchInput');
+        if (searchInput) {
+            this.searchQuery = searchInput.value.trim().toLowerCase();
+            this.renderMeetings();
+        }
+    }
+
+    // 검색어 하이라이트 함수
+    highlightSearchTerm(text, searchTerm) {
+        if (!searchTerm || !text) return this.escapeHtml(text);
+        
+        const escapedText = this.escapeHtml(text);
+        const escapedSearchTerm = this.escapeHtml(searchTerm);
+        
+        // 대소문자 구분 없이 검색어 하이라이트
+        const regex = new RegExp(`(${escapedSearchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return escapedText.replace(regex, '<mark style="background-color: #fff3cd; padding: 2px 4px; border-radius: 3px; font-weight: 600;">$1</mark>');
     }
 
     // 카테고리 로드 (Glossary와 동일한 소스 사용)

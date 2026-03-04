@@ -324,12 +324,16 @@
 
             <!-- 검색 바 -->
             <div class="meeting-filter-section" style="margin-bottom: 20px;">
-                <div style="position: relative;">
-                    <input type="text" id="meetingSearchInput" placeholder="회의 제목, 내용, 담당자, 참석자로 검색..." 
-                           style="width: 100%; padding: 12px 40px 12px 16px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 1em; outline: none; transition: border-color 0.2s;"
-                           onfocus="this.style.borderColor='#2b68dc'"
-                           onblur="this.style.borderColor='#e0e0e0'">
-                    <span style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: #999; font-size: 1.2em;">🔍</span>
+                <div style="display: flex; gap: 10px;">
+                    <div style="position: relative; flex: 1;">
+                        <input type="text" id="meetingSearchInput" placeholder="회의 제목, 내용, 담당자, 참석자로 검색..." 
+                               style="width: 100%; padding: 12px 40px 12px 16px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 1em; outline: none; transition: border-color 0.2s;"
+                               onfocus="this.style.borderColor='#2b68dc'"
+                               onblur="this.style.borderColor='#e0e0e0'"
+                               onkeypress="if(event.key === 'Enter') { window.meetingManager && window.meetingManager.performSearch(); }">
+                        <span style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: #999; font-size: 1.2em;">🔍</span>
+                    </div>
+                    <button id="searchBtn" class="btn btn-primary" style="padding: 12px 24px; white-space: nowrap;">검색</button>
                 </div>
             </div>
 
