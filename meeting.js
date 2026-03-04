@@ -330,13 +330,7 @@ class MeetingManager {
             }
             
             html += `
-                <div class="meeting-item" onclick="window.meetingManager && window.meetingManager.viewMeeting('${meeting.id}')" style="position: relative;">
-                    <div style="position: absolute; top: 15px; right: 15px; z-index: 10;">
-                        <span style="background: #f0f0f0; color: #666; font-size: 0.85em; cursor: pointer; padding: 6px 12px; border-radius: 4px; display: inline-block; transition: background 0.2s;" 
-                              onclick="event.stopPropagation(); window.meetingManager && window.meetingManager.openEditModal('${meeting.id}')"
-                              onmouseover="this.style.background='#e0e0e0'"
-                              onmouseout="this.style.background='#f0f0f0'">수정</span>
-                    </div>
+                <div class="meeting-item" onclick="window.meetingManager && window.meetingManager.viewMeeting('${meeting.id}')">
                     <div class="meeting-item-header">
                         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                             <span class="meeting-tag" style="background-color: ${categoryColor}20; border: 1px solid ${categoryColor}60; color: ${categoryColor}; font-weight: 600;">
@@ -352,15 +346,15 @@ class MeetingManager {
                         <div><strong>담당자:</strong> ${assigneeHtml}</div>
                         <div><strong>참석자:</strong> ${attendeesHtml}</div>
                     </div>
-                    <div style="background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 16px; margin-top: 8px; white-space: pre-wrap; line-height: 1.6;">
-                        <strong style="color: #333; display: block; margin-bottom: 10px;">논의 내용:</strong>
+                    <div style="background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px; margin-top: 8px; white-space: pre-wrap; line-height: 1.6;">
+                        <strong style="color: #333; display: block; margin-bottom: 4px;">논의 내용:</strong>
                         <div style="color: #333;">
                             ${this.escapeHtml(meeting.content || '-')}
                         </div>
                     </div>
                     ${meeting.notes ? `
-                    <div style="background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 16px; margin-top: 12px; white-space: pre-wrap; line-height: 1.6;">
-                        <strong style="color: #333; display: block; margin-bottom: 10px;">참고 사항:</strong>
+                    <div style="background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px; margin-top: 12px; white-space: pre-wrap; line-height: 1.6;">
+                        <strong style="color: #333; display: block; margin-bottom: 4px;">참고 사항:</strong>
                         <div style="color: #666;">
                             ${this.escapeHtml(meeting.notes)}
                         </div>
