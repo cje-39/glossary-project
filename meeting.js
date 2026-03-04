@@ -353,7 +353,7 @@ class MeetingManager {
                     </div>
                     <div style="margin-top: 12px;">
                         <strong style="color: #333; display: block; margin-bottom: 4px;">논의 내용:</strong>
-                        <div style="background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 6px; white-space: pre-wrap; line-height: 1.6;">
+                        <div style="background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 4px; white-space: pre-wrap; line-height: 1.4; display: inline-block; width: 100%;">
                             <div style="color: #333;">
                                 ${this.escapeHtml(meeting.content || '-')}
                             </div>
@@ -362,7 +362,7 @@ class MeetingManager {
                     ${meeting.notes ? `
                     <div style="margin-top: 12px;">
                         <strong style="color: #333; display: block; margin-bottom: 4px;">참고 사항:</strong>
-                        <div style="background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 6px; white-space: pre-wrap; line-height: 1.6;">
+                        <div style="background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 4px; white-space: pre-wrap; line-height: 1.4; display: inline-block; width: 100%;">
                             <div style="color: #666;">
                                 ${this.escapeHtml(meeting.notes)}
                             </div>
