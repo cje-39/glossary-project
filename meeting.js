@@ -340,16 +340,6 @@ class MeetingManager {
                 assigneeHtml = `<span class="meeting-tag" style="display: inline-block; margin: 2px;">${this.escapeHtml(meeting.assignee)}</span>`;
             }
             
-            // 논의 내용 (요약)
-            const contentPreview = meeting.content 
-                ? (meeting.content.length > 100 ? meeting.content.substring(0, 100) + '...' : meeting.content)
-                : '-';
-            
-            // 참고 사항 (요약)
-            const notesPreview = meeting.notes 
-                ? (meeting.notes.length > 50 ? meeting.notes.substring(0, 50) + '...' : meeting.notes)
-                : '-';
-            
             html += `
                 <tr style="border-bottom: 1px solid #f0f0f0; transition: background 0.2s;" 
                     onmouseover="this.style.background='#fafafa'"
