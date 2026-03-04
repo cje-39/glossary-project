@@ -809,7 +809,7 @@ class MeetingManager {
         }
     }
 
-    // TeamUP 일정 불러오기
+    // TeamUP 일정 불러오기 (주간 캘린더)
     async loadTeamupEvents() {
         if (!this.teamupApiKey) {
             alert('먼저 API 키를 입력하고 저장해주세요.');
@@ -823,14 +823,23 @@ class MeetingManager {
             if (eventsContainer) {
                 eventsContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">일정을 불러오는 중...</div>';
             }
+            if (eventsList) {
+                eventsList.style.display = 'block';
+            }
 
-            // 오늘부터 30일 후까지의 일정 가져오기
-            const startDate = new Date();
-            const endDate = new Date();
-            endDate.setDate(endDate.getDate() + 30);
+            // 이번 주(월요일~일요일) 일정 가져오기
+            const today = new Date();
+            const dayOfWeek = today.getDay(); // 0=일요일, 1=월요일, ...
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+            monday.setHours(0, 0, 0, 0);
             
-            const startDateStr = startDate.toISOString().split('T')[0];
-            const endDateStr = endDate.toISOString().split('T')[0];
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            sunday.setHours(23, 59, 59, 999);
+            
+            const startDateStr = monday.toISOString().split('T')[0];
+            const endDateStr = sunday.toISOString().split('T')[0];
 
             const apiUrl = `https://api.teamup.com/${this.teamupCalendarId}/events?startDate=${startDateStr}&endDate=${endDateStr}`;
             
@@ -841,27 +850,21 @@ class MeetingManager {
             });
 
             if (!response.ok) {
-                throw new Error(`API 요청 실패: ${response.status} ${response.statusText}`);
+                const errorText = await response.text();
+                throw new Error(`API 요청 실패: ${response.status} ${response.statusText}. ${errorText}`);
             }
 
             const data = await response.json();
             
             if (!data.events || data.events.length === 0) {
                 if (eventsContainer) {
-                    eventsContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">예정된 일정이 없습니다.</div>';
-                }
-                if (eventsList) {
-                    eventsList.style.display = 'block';
+                    eventsContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">이번 주 예정된 일정이 없습니다.</div>';
                 }
                 return;
             }
 
-            // 일정 목록 렌더링
-            this.renderTeamupEvents(data.events);
-            
-            if (eventsList) {
-                eventsList.style.display = 'block';
-            }
+            // 주간 캘린더 렌더링
+            this.renderWeeklyCalendar(data.events, monday);
         } catch (error) {
             console.error('TeamUP 일정 불러오기 실패:', error);
             const eventsContainer = document.getElementById('teamupEventsContainer');
@@ -871,50 +874,94 @@ class MeetingManager {
         }
     }
 
-    // TeamUP 일정 목록 렌더링
-    renderTeamupEvents(events) {
+    // 주간 캘린더 렌더링
+    renderWeeklyCalendar(events, weekStart) {
         const eventsContainer = document.getElementById('teamupEventsContainer');
         if (!eventsContainer) return;
 
-        // 날짜순으로 정렬
-        const sortedEvents = [...events].sort((a, b) => {
-            const dateA = new Date(a.start_dt || a.start);
-            const dateB = new Date(b.start_dt || b.start);
-            return dateA - dateB;
+        // 날짜별로 이벤트 그룹화
+        const eventsByDate = {};
+        events.forEach(event => {
+            const startDate = new Date(event.start_dt || event.start);
+            const dateKey = startDate.toISOString().split('T')[0];
+            if (!eventsByDate[dateKey]) {
+                eventsByDate[dateKey] = [];
+            }
+            eventsByDate[dateKey].push(event);
         });
 
-        let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
-        
-        sortedEvents.forEach(event => {
-            const startDate = new Date(event.start_dt || event.start);
-            const endDate = new Date(event.end_dt || event.end);
-            const formattedDate = startDate.toLocaleDateString('ko-KR', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
+        // 주간 날짜 배열 생성 (월~일)
+        const weekDays = [];
+        const dayNames = ['월', '화', '수', '목', '금', '토', '일'];
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(weekStart);
+            date.setDate(weekStart.getDate() + i);
+            weekDays.push({
+                date: date,
+                dateKey: date.toISOString().split('T')[0],
+                dayName: dayNames[i],
+                dayNum: date.getDate(),
+                month: date.getMonth() + 1
             });
-            
-            const title = event.title || '제목 없음';
-            const notes = event.notes || '';
-            
-            const eventId = event.id || event.event_id || Math.random().toString(36).substr(2, 9);
-            const eventData = JSON.stringify(event).replace(/'/g, "&#39;").replace(/"/g, '&quot;');
+        }
+
+        // 주간 캘린더 HTML 생성
+        let html = `
+            <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 10px;">
+        `;
+
+        // 날짜 헤더
+        weekDays.forEach(day => {
+            const isToday = day.dateKey === new Date().toISOString().split('T')[0];
             html += `
-                <div style="padding: 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: white; cursor: pointer; transition: background 0.2s;"
-                     onmouseover="this.style.background='#f8f9fa'"
-                     onmouseout="this.style.background='white'"
-                     onclick="window.meetingManager && window.meetingManager.createMeetingFromEvent('${eventId}')"
-                     data-event-id="${eventId}"
-                     data-event="${eventData}">
-                    <div style="font-weight: 600; color: #333; margin-bottom: 4px;">${this.escapeHtml(title)}</div>
-                    <div style="font-size: 0.9em; color: #666;">${formattedDate}</div>
-                    ${notes ? `<div style="font-size: 0.85em; color: #999; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(notes.substring(0, 50))}${notes.length > 50 ? '...' : ''}</div>` : ''}
+                <div style="text-align: center; padding: 8px; background: ${isToday ? '#e8f0fe' : '#f8f9fa'}; border-radius: 4px; border: ${isToday ? '2px solid #2b68dc' : '1px solid #e0e0e0'};">
+                    <div style="font-size: 0.85em; color: #666; margin-bottom: 4px;">${day.dayName}</div>
+                    <div style="font-weight: 600; color: #333; font-size: 1.1em;">${day.dayNum}</div>
                 </div>
             `;
         });
+
+        html += '</div>';
+
+        // 각 날짜별 이벤트 표시
+        html += '<div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px;">';
         
+        weekDays.forEach(day => {
+            const dayEvents = eventsByDate[day.dateKey] || [];
+            html += `
+                <div style="min-height: 200px; padding: 8px; background: white; border: 1px solid #e0e0e0; border-radius: 4px;">
+            `;
+            
+            if (dayEvents.length === 0) {
+                html += '<div style="color: #999; font-size: 0.85em; text-align: center; padding: 10px;">일정 없음</div>';
+            } else {
+                dayEvents.forEach(event => {
+                    const startDate = new Date(event.start_dt || event.start);
+                    const timeStr = startDate.toLocaleTimeString('ko-KR', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    const title = event.title || '제목 없음';
+                    const eventId = event.id || event.event_id || Math.random().toString(36).substr(2, 9);
+                    const eventData = JSON.stringify(event).replace(/'/g, "&#39;").replace(/"/g, '&quot;');
+                    
+                    html += `
+                        <div style="padding: 8px; margin-bottom: 6px; background: #f0f7ff; border: 1px solid #2b68dc; border-radius: 4px; cursor: pointer; transition: background 0.2s;"
+                             onmouseover="this.style.background='#e8f0fe'"
+                             onmouseout="this.style.background='#f0f7ff'"
+                             onclick="window.meetingManager && window.meetingManager.createMeetingFromEvent('${eventId}')"
+                             data-event-id="${eventId}"
+                             data-event="${eventData}">
+                            <div style="font-size: 0.75em; color: #2b68dc; margin-bottom: 4px; font-weight: 600;">${timeStr}</div>
+                            <div style="font-size: 0.85em; color: #333; font-weight: 600; line-height: 1.3;">${this.escapeHtml(title)}</div>
+                        </div>
+                    `;
+                });
+            }
+            
+            html += '</div>';
+        });
+
         html += '</div>';
         eventsContainer.innerHTML = html;
     }
