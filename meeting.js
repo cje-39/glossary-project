@@ -19,6 +19,22 @@ class MeetingManager {
         this.setupEventListeners();
         this.renderCategoryFilter();
         this.renderMeetings();
+        
+        // LocalStorage 변경 감지 (다른 탭에서 변경된 경우)
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'glossaryCategories') {
+                try {
+                    this.categories = JSON.parse(e.newValue || '[]');
+                    this.renderCategoryFilter();
+                    this.populateCategoryOptions();
+                    if (document.getElementById('categoryList')) {
+                        this.renderCategoryList();
+                    }
+                } catch (error) {
+                    console.error('카테고리 동기화 실패:', error);
+                }
+            }
+        });
     }
 
     setupEventListeners() {
@@ -113,6 +129,52 @@ class MeetingManager {
             });
         }
 
+        // 카테고리 관리 버튼
+        const manageCategoryBtn = document.getElementById('manageCategoryBtn');
+        if (manageCategoryBtn) {
+            manageCategoryBtn.addEventListener('click', () => {
+                this.openCategoryModal();
+            });
+        }
+
+        // 카테고리 모달 닫기
+        const closeCategoryModal = document.getElementById('closeCategoryModal');
+        const closeCategoryBtn = document.getElementById('closeCategoryBtn');
+        if (closeCategoryModal) {
+            closeCategoryModal.addEventListener('click', () => this.closeCategoryModal());
+        }
+        if (closeCategoryBtn) {
+            closeCategoryBtn.addEventListener('click', () => this.closeCategoryModal());
+        }
+
+        // 카테고리 모달 외부 클릭 시 닫기
+        const categoryModal = document.getElementById('categoryModal');
+        if (categoryModal) {
+            categoryModal.addEventListener('click', (e) => {
+                if (e.target === categoryModal) {
+                    this.closeCategoryModal();
+                }
+            });
+        }
+
+        // 카테고리 추가 버튼
+        const addCategoryBtn = document.getElementById('addCategoryBtn');
+        if (addCategoryBtn) {
+            addCategoryBtn.addEventListener('click', () => {
+                this.addCategory();
+            });
+        }
+
+        // 카테고리 입력 필드에서 Enter 키 처리
+        const newCategoryInput = document.getElementById('newCategoryInput');
+        if (newCategoryInput) {
+            newCategoryInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.addCategory();
+                }
+            });
+        }
+
     }
 
     // 검색 실행
@@ -144,8 +206,29 @@ class MeetingManager {
                 const data = await FirestoreHelper.load('glossary', 'categories');
                 if (data && data.categories) {
                     this.categories = data.categories;
+                    console.log('✅ Firestore에서 카테고리 로드 완료:', this.categories);
+                    // LocalStorage에도 백업 저장
+                    localStorage.setItem('glossaryCategories', JSON.stringify(this.categories));
+                    
+                    // 실시간 동기화 리스너 설정
+                    FirestoreHelper.onSnapshot('glossary', 'categories', (data) => {
+                        if (data && data.categories) {
+                            console.log('🔄 Firestore 카테고리 실시간 업데이트:', data.categories);
+                            this.categories = data.categories;
+                            localStorage.setItem('glossaryCategories', JSON.stringify(this.categories));
+                            this.renderCategoryFilter();
+                            this.populateCategoryOptions();
+                            if (document.getElementById('categoryList')) {
+                                this.renderCategoryList();
+                            }
+                        }
+                    });
                     return;
+                } else {
+                    console.log('ℹ️ Firestore에 카테고리 데이터가 없습니다. LocalStorage 사용.');
                 }
+            } else {
+                console.warn('⚠️ FirestoreHelper를 사용할 수 없습니다.');
             }
         } catch (error) {
             console.log('Firestore에서 카테고리 로드 실패, LocalStorage 사용:', error);
@@ -158,6 +241,50 @@ class MeetingManager {
         } else {
             // 기본 카테고리
             this.categories = ['#dinkum', '#pubgm', '#ADK', '#palm', '#inzoi', '#tango'];
+            this.saveCategories();
+        }
+    }
+
+    // 카테고리 저장 (Glossary와 동기화)
+    async saveCategories() {
+        // LocalStorage에 저장 (즉시 반응)
+        localStorage.setItem('glossaryCategories', JSON.stringify(this.categories));
+        console.log('카테고리 LocalStorage 저장 완료:', this.categories);
+        
+        // Firestore에도 저장 (비동기)
+        try {
+            if (window.FirestoreHelper) {
+                await FirestoreHelper.save('glossary', 'categories', {
+                    categories: this.categories
+                });
+                console.log('✅ 카테고리 Firestore 저장 완료:', this.categories);
+            } else {
+                console.warn('⚠️ FirestoreHelper를 사용할 수 없습니다.');
+            }
+        } catch (error) {
+            console.error('❌ Firestore에 카테고리 저장 실패:', error);
+            alert('Firebase에 카테고리 저장에 실패했습니다. 콘솔을 확인해주세요.');
+        }
+        
+        // 다른 페이지에 변경 알림 (storage 이벤트는 같은 탭에서는 발생하지 않으므로 직접 호출)
+        if (window.glossaryManager && window.glossaryManager.categories) {
+            window.glossaryManager.categories = [...this.categories];
+            if (window.glossaryManager.renderCategoryFilter) {
+                window.glossaryManager.renderCategoryFilter();
+            }
+            if (window.glossaryManager.renderCategoryList) {
+                window.glossaryManager.renderCategoryList();
+            }
+            if (window.glossaryManager.renderCategoryCheckboxes) {
+                window.glossaryManager.renderCategoryCheckboxes();
+            }
+        }
+        
+        // 현재 페이지 업데이트
+        this.renderCategoryFilter();
+        this.populateCategoryOptions();
+        if (document.getElementById('categoryList')) {
+            this.renderCategoryList();
         }
     }
     
@@ -824,6 +951,111 @@ class MeetingManager {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // 카테고리 모달 열기
+    openCategoryModal() {
+        const modal = document.getElementById('categoryModal');
+        if (!modal) {
+            console.error('categoryModal을 찾을 수 없습니다.');
+            return;
+        }
+        this.renderCategoryList();
+        modal.classList.add('active');
+    }
+
+    // 카테고리 모달 닫기
+    closeCategoryModal() {
+        const modal = document.getElementById('categoryModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    }
+
+    // 카테고리 목록 렌더링
+    renderCategoryList() {
+        const container = document.getElementById('categoryList');
+        if (!container) return;
+        container.innerHTML = '';
+        
+        if (this.categories.length === 0) {
+            container.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">카테고리가 없습니다.</div>';
+            return;
+        }
+        
+        this.categories.forEach((category, index) => {
+            const displayName = category.replace(/^#/, '');
+            const categoryColor = this.getCategoryColor(category);
+            
+            const item = document.createElement('div');
+            item.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #f0f0f0;';
+            item.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                    <span class="meeting-tag" style="background-color: ${categoryColor}20; border: 1px solid ${categoryColor}60; color: ${categoryColor}; font-weight: 600;">
+                        ${this.escapeHtml(displayName)}
+                    </span>
+                    <span style="color: #666; font-size: 0.9em;">${this.escapeHtml(category)}</span>
+                </div>
+                <button type="button" class="btn btn-danger" style="padding: 6px 12px; font-size: 13px;" onclick="window.meetingManager && window.meetingManager.deleteCategory(${index})">삭제</button>
+            `;
+            container.appendChild(item);
+        });
+    }
+
+    // 카테고리 추가
+    async addCategory() {
+        const input = document.getElementById('newCategoryInput');
+        if (!input) return;
+        
+        const newCategory = input.value.trim();
+        
+        if (!newCategory) {
+            alert('카테고리를 입력해주세요.');
+            return;
+        }
+        
+        // #로 시작하지 않으면 추가
+        const formattedCategory = newCategory.startsWith('#') ? newCategory : '#' + newCategory;
+        
+        if (this.categories.includes(formattedCategory)) {
+            alert('이미 존재하는 카테고리입니다.');
+            return;
+        }
+        
+        this.categories.push(formattedCategory);
+        await this.saveCategories();
+        input.value = '';
+        console.log(`카테고리 "${formattedCategory}" 추가 완료`);
+    }
+
+    // 카테고리 삭제
+    async deleteCategory(index) {
+        const category = this.categories[index];
+        if (!category) return;
+        
+        // 해당 카테고리를 사용하는 회의 기록이 있는지 확인
+        const meetingsUsingCategory = this.meetings.filter(meeting => 
+            meeting.category === category
+        );
+        
+        if (meetingsUsingCategory.length > 0) {
+            if (!confirm(`"${category}" 카테고리를 사용하는 회의 기록이 ${meetingsUsingCategory.length}개 있습니다.\n정말 삭제하시겠습니까?`)) {
+                return;
+            }
+            
+            // 회의 기록에서 해당 카테고리 제거 (또는 기본값으로 변경)
+            this.meetings.forEach(meeting => {
+                if (meeting.category === category) {
+                    // 첫 번째 사용 가능한 카테고리로 변경하거나 빈 값으로 설정
+                    meeting.category = this.categories.find(cat => cat !== category) || '';
+                }
+            });
+            this.saveMeetings();
+        }
+        
+        this.categories.splice(index, 1);
+        await this.saveCategories();
+        console.log(`카테고리 "${category}" 삭제 완료`);
     }
 
 }
