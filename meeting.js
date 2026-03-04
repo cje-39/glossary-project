@@ -300,7 +300,7 @@ class MeetingManager {
                         <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">참석자</th>
                         <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">논의 내용</th>
                         <th style="padding: 12px; text-align: left; font-weight: 600; color: #333;">참고 사항</th>
-                        <th style="padding: 12px; text-align: center; font-weight: 600; color: #333; width: 120px;">관리</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600; color: #333; width: 80px;">관리</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -376,8 +376,10 @@ class MeetingManager {
                         </div>
                     </td>
                     <td style="padding: 12px; text-align: center;">
-                        <button class="btn btn-edit" onclick="event.stopPropagation(); window.meetingManager && window.meetingManager.openEditModal('${meeting.id}')" style="padding: 6px 12px; font-size: 12px; margin-right: 4px;">수정</button>
-                        <button class="btn btn-danger" onclick="event.stopPropagation(); window.meetingManager && window.meetingManager.deleteMeeting('${meeting.id}')" style="padding: 6px 12px; font-size: 12px;">삭제</button>
+                        <span style="color: #666; font-size: 0.85em; cursor: pointer; text-decoration: underline;" 
+                              onclick="event.stopPropagation(); window.meetingManager && window.meetingManager.openEditModal('${meeting.id}')"
+                              onmouseover="this.style.color='#2b68dc'"
+                              onmouseout="this.style.color='#666'">수정</span>
                     </td>
                 </tr>
             `;
@@ -485,6 +487,18 @@ class MeetingManager {
         // 옵션 채우기
         this.populateCategoryOptions();
         this.populateAssigneeOptions();
+
+        // 삭제 버튼 표시
+        const deleteBtn = document.getElementById('deleteMeetingBtn');
+        if (deleteBtn) {
+            deleteBtn.style.display = 'block';
+            deleteBtn.onclick = () => {
+                if (confirm('정말로 이 회의 기록을 삭제하시겠습니까?')) {
+                    this.deleteMeeting(id);
+                    this.closeMeetingModal();
+                }
+            };
+        }
 
         if (modal) modal.classList.add('active');
     }
