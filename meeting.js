@@ -15,6 +15,7 @@ class MeetingManager {
         await this.loadCategories();
         await this.loadAssignees();
         await this.loadMeetings();
+        this.loadTeamupSettings();
         this.setupEventListeners();
         this.renderCategoryFilter();
         this.renderMeetings();
@@ -715,6 +716,228 @@ class MeetingManager {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // TeamUP 설정 로드
+    loadTeamupSettings() {
+        try {
+            const savedApiKey = localStorage.getItem('teamupApiKey');
+            const savedCalendarUrl = localStorage.getItem('teamupCalendarUrl');
+            
+            if (savedApiKey) {
+                this.teamupApiKey = savedApiKey;
+                const apiKeyInput = document.getElementById('teamupApiKey');
+                if (apiKeyInput) {
+                    apiKeyInput.value = savedApiKey;
+                }
+            }
+            
+            if (savedCalendarUrl) {
+                const calendarUrlInput = document.getElementById('teamupCalendarUrl');
+                if (calendarUrlInput) {
+                    calendarUrlInput.value = savedCalendarUrl;
+                }
+                // 캘린더 ID 추출
+                const match = savedCalendarUrl.match(/teamup\.com\/c\/([a-zA-Z0-9]+)/);
+                if (match) {
+                    this.teamupCalendarId = match[1];
+                }
+            }
+        } catch (error) {
+            console.error('TeamUP 설정 로드 실패:', error);
+        }
+    }
+
+    // TeamUP 설정 저장
+    saveTeamupSettings() {
+        try {
+            const apiKeyInput = document.getElementById('teamupApiKey');
+            const calendarUrlInput = document.getElementById('teamupCalendarUrl');
+            
+            if (apiKeyInput && calendarUrlInput) {
+                const apiKey = apiKeyInput.value.trim();
+                const calendarUrl = calendarUrlInput.value.trim();
+                
+                if (apiKey) {
+                    this.teamupApiKey = apiKey;
+                    localStorage.setItem('teamupApiKey', apiKey);
+                }
+                
+                if (calendarUrl) {
+                    localStorage.setItem('teamupCalendarUrl', calendarUrl);
+                    // 캘린더 ID 추출
+                    const match = calendarUrl.match(/teamup\.com\/c\/([a-zA-Z0-9]+)/);
+                    if (match) {
+                        this.teamupCalendarId = match[1];
+                    }
+                }
+                
+                alert('TeamUP 설정이 저장되었습니다.');
+            }
+        } catch (error) {
+            console.error('TeamUP 설정 저장 실패:', error);
+            alert('설정 저장에 실패했습니다.');
+        }
+    }
+
+    // TeamUP 일정 불러오기
+    async loadTeamupEvents() {
+        if (!this.teamupApiKey) {
+            alert('먼저 API 키를 입력하고 저장해주세요.');
+            return;
+        }
+
+        try {
+            const eventsContainer = document.getElementById('teamupEventsContainer');
+            const eventsList = document.getElementById('teamupEventsList');
+            
+            if (eventsContainer) {
+                eventsContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">일정을 불러오는 중...</div>';
+            }
+
+            // 오늘부터 30일 후까지의 일정 가져오기
+            const startDate = new Date();
+            const endDate = new Date();
+            endDate.setDate(endDate.getDate() + 30);
+            
+            const startDateStr = startDate.toISOString().split('T')[0];
+            const endDateStr = endDate.toISOString().split('T')[0];
+
+            const apiUrl = `https://api.teamup.com/${this.teamupCalendarId}/events?startDate=${startDateStr}&endDate=${endDateStr}`;
+            
+            const response = await fetch(apiUrl, {
+                headers: {
+                    'Teamup-Token': this.teamupApiKey
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`API 요청 실패: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            
+            if (!data.events || data.events.length === 0) {
+                if (eventsContainer) {
+                    eventsContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">예정된 일정이 없습니다.</div>';
+                }
+                if (eventsList) {
+                    eventsList.style.display = 'block';
+                }
+                return;
+            }
+
+            // 일정 목록 렌더링
+            this.renderTeamupEvents(data.events);
+            
+            if (eventsList) {
+                eventsList.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('TeamUP 일정 불러오기 실패:', error);
+            const eventsContainer = document.getElementById('teamupEventsContainer');
+            if (eventsContainer) {
+                eventsContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: #dc3545;">일정을 불러오는데 실패했습니다.<br>${error.message}</div>`;
+            }
+        }
+    }
+
+    // TeamUP 일정 목록 렌더링
+    renderTeamupEvents(events) {
+        const eventsContainer = document.getElementById('teamupEventsContainer');
+        if (!eventsContainer) return;
+
+        // 날짜순으로 정렬
+        const sortedEvents = [...events].sort((a, b) => {
+            const dateA = new Date(a.start_dt || a.start);
+            const dateB = new Date(b.start_dt || b.start);
+            return dateA - dateB;
+        });
+
+        let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+        
+        sortedEvents.forEach(event => {
+            const startDate = new Date(event.start_dt || event.start);
+            const endDate = new Date(event.end_dt || event.end);
+            const formattedDate = startDate.toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            const title = event.title || '제목 없음';
+            const notes = event.notes || '';
+            
+            html += `
+                <div style="padding: 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: white; cursor: pointer; transition: background 0.2s;"
+                     onmouseover="this.style.background='#f8f9fa'"
+                     onmouseout="this.style.background='white'"
+                     onclick="window.meetingManager && window.meetingManager.createMeetingFromEvent(${JSON.stringify(event).replace(/"/g, '&quot;')})">
+                    <div style="font-weight: 600; color: #333; margin-bottom: 4px;">${this.escapeHtml(title)}</div>
+                    <div style="font-size: 0.9em; color: #666;">${formattedDate}</div>
+                    ${notes ? `<div style="font-size: 0.85em; color: #999; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(notes.substring(0, 50))}${notes.length > 50 ? '...' : ''}</div>` : ''}
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        eventsContainer.innerHTML = html;
+    }
+
+    // TeamUP 일정에서 회의록 생성
+    createMeetingFromEvent(event) {
+        const startDate = new Date(event.start_dt || event.start);
+        const endDate = new Date(event.end_dt || event.end);
+        
+        // 날짜/시간 포맷팅
+        const year = startDate.getFullYear();
+        const month = String(startDate.getMonth() + 1).padStart(2, '0');
+        const day = String(startDate.getDate()).padStart(2, '0');
+        const hours = String(startDate.getHours()).padStart(2, '0');
+        const minutes = String(startDate.getMinutes()).padStart(2, '0');
+        const dateTimeValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+        // 모달 열기
+        this.openNewMeetingModal();
+
+        // 필드 자동 입력
+        setTimeout(() => {
+            const dateTimeInput = document.getElementById('meetingDateTime');
+            const titleInput = document.getElementById('meetingTitle');
+            const contentInput = document.getElementById('meetingContent');
+            
+            if (dateTimeInput) {
+                dateTimeInput.value = dateTimeValue;
+            }
+            
+            if (titleInput) {
+                titleInput.value = event.title || '';
+            }
+            
+            if (contentInput) {
+                const notes = event.notes || '';
+                const eventInfo = `일정: ${startDate.toLocaleString('ko-KR')} ~ ${endDate.toLocaleString('ko-KR')}\n\n`;
+                contentInput.value = eventInfo + notes;
+            }
+
+            // 담당자 정보가 있다면 (event.who 필드 확인)
+            if (event.who) {
+                // 담당자 체크박스 찾아서 선택
+                const assigneeCheckboxes = document.querySelectorAll('#meetingAssigneeCheckboxes input[type="checkbox"]');
+                assigneeCheckboxes.forEach(checkbox => {
+                    if (event.who.includes(checkbox.value)) {
+                        checkbox.checked = true;
+                        const label = checkbox.closest('label');
+                        if (label) {
+                            label.style.background = '#e8f0fe';
+                            label.style.borderColor = '#2b68dc';
+                        }
+                    }
+                });
+            }
+        }, 100);
     }
     
 }
