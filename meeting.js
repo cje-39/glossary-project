@@ -346,15 +346,15 @@ class MeetingManager {
                         <div><strong>담당자:</strong> ${assigneeHtml}</div>
                         <div><strong>참석자:</strong> ${attendeesHtml}</div>
                     </div>
-                    <div style="background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px; margin-top: 8px; white-space: pre-wrap; line-height: 1.6;">
-                        <strong style="color: #333; display: block; margin-bottom: 4px;">논의 내용:</strong>
+                    <div style="background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 4px 8px; margin-top: 8px; white-space: pre-wrap; line-height: 1.6;">
+                        <strong style="color: #333; display: block; margin-bottom: 2px;">논의 내용:</strong>
                         <div style="color: #333;">
                             ${this.escapeHtml(meeting.content || '-')}
                         </div>
                     </div>
                     ${meeting.notes ? `
-                    <div style="background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px; margin-top: 12px; white-space: pre-wrap; line-height: 1.6;">
-                        <strong style="color: #333; display: block; margin-bottom: 4px;">참고 사항:</strong>
+                    <div style="background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 4px 8px; margin-top: 8px; white-space: pre-wrap; line-height: 1.6;">
+                        <strong style="color: #333; display: block; margin-bottom: 2px;">참고 사항:</strong>
                         <div style="color: #666;">
                             ${this.escapeHtml(meeting.notes)}
                         </div>
