@@ -8,6 +8,7 @@ class MeetingManager {
         this.editingId = null;
         this.viewingId = null;
         this.dateSortOrder = 'desc'; // 'asc' or 'desc' - 기본값은 최신순
+        this.searchQuery = ''; // 검색어
         this.init();
     }
 
@@ -91,6 +92,15 @@ class MeetingManager {
                 if (e.target === detailModal) {
                     this.closeDetailModal();
                 }
+            });
+        }
+
+        // 검색 입력
+        const searchInput = document.getElementById('meetingSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.searchQuery = e.target.value.trim().toLowerCase();
+                this.renderMeetings();
             });
         }
 
@@ -266,10 +276,33 @@ class MeetingManager {
 
         // 필터링
         let filteredMeetings = this.meetings;
+        
+        // 카테고리 필터
         if (this.selectedCategoryFilter) {
-            filteredMeetings = this.meetings.filter(meeting => 
+            filteredMeetings = filteredMeetings.filter(meeting => 
                 meeting.category === this.selectedCategoryFilter
             );
+        }
+        
+        // 검색어 필터
+        if (this.searchQuery) {
+            filteredMeetings = filteredMeetings.filter(meeting => {
+                const title = (meeting.title || '').toLowerCase();
+                const content = (meeting.content || '').toLowerCase();
+                const notes = (meeting.notes || '').toLowerCase();
+                const assignee = Array.isArray(meeting.assignee) 
+                    ? meeting.assignee.join(' ').toLowerCase()
+                    : (meeting.assignee || '').toLowerCase();
+                const attendees = Array.isArray(meeting.attendees)
+                    ? meeting.attendees.join(' ').toLowerCase()
+                    : (meeting.attendees || '').toLowerCase();
+                
+                return title.includes(this.searchQuery) ||
+                       content.includes(this.searchQuery) ||
+                       notes.includes(this.searchQuery) ||
+                       assignee.includes(this.searchQuery) ||
+                       attendees.includes(this.searchQuery);
+            });
         }
 
         // 날짜 정렬
@@ -280,11 +313,18 @@ class MeetingManager {
         });
 
         if (filteredMeetings.length === 0) {
+            let emptyMessage = '아직 등록된 회의 기록이 없습니다.';
+            if (this.selectedCategoryFilter) {
+                emptyMessage = '선택한 카테고리의 회의 기록이 없습니다.';
+            } else if (this.searchQuery) {
+                emptyMessage = `"${this.searchQuery}"에 대한 검색 결과가 없습니다.`;
+            }
+            
             meetingList.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-state-icon">📋</div>
-                    <p>${this.selectedCategoryFilter ? '선택한 카테고리의 회의 기록이 없습니다.' : '아직 등록된 회의 기록이 없습니다.'}</p>
-                    <p style="margin-top: 10px; font-size: 0.9em;">새 회의 기록 버튼을 클릭하여 첫 회의를 등록하세요.</p>
+                    <p>${emptyMessage}</p>
+                    ${!this.searchQuery && !this.selectedCategoryFilter ? '<p style="margin-top: 10px; font-size: 0.9em;">새 회의 기록 버튼을 클릭하여 첫 회의를 등록하세요.</p>' : ''}
                 </div>
             `;
             return;

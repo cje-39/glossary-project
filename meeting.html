@@ -322,6 +322,17 @@
                 </div>
             </div>
 
+            <!-- 검색 바 -->
+            <div class="meeting-filter-section" style="margin-bottom: 20px;">
+                <div style="position: relative;">
+                    <input type="text" id="meetingSearchInput" placeholder="회의 제목, 내용, 담당자, 참석자로 검색..." 
+                           style="width: 100%; padding: 12px 40px 12px 16px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 1em; outline: none; transition: border-color 0.2s;"
+                           onfocus="this.style.borderColor='#2b68dc'"
+                           onblur="this.style.borderColor='#e0e0e0'">
+                    <span style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: #999; font-size: 1.2em;">🔍</span>
+                </div>
+            </div>
+
             <!-- 카테고리 필터 -->
             <div class="meeting-filter-section" id="categoryFilterSection" style="display: none;">
                 <div class="category-filter-container" id="categoryFilterContainer">
